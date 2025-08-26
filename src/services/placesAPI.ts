@@ -1,6 +1,9 @@
 // Note: Direct REST API calls from browser are blocked by CORS
 // We'll use Google Maps JavaScript API instead
 import { config } from '../config/api';
+import { RestaurantCache } from '../utils/cache';
+import { dataForSeoRankedKeywordsAPI } from './dataForSeoRankedKeywords';
+import { KeywordData } from './revenueCalculations';
 
 export interface PlaceSearchResult {
   place_id: string;
@@ -56,6 +59,8 @@ export interface RestaurantIntelligence {
     facebook?: string;
     twitter?: string;
   };
+  keywords?: KeywordData[];
+  keywordsFetchError?: string;
 }
 
 // Global type declarations for Google Maps API
@@ -137,9 +142,15 @@ class PlacesAPIService {
   }
 
   /**
-   * Get detailed information about a specific place
+   * Get detailed information about a specific place (with caching)
    */
   async getPlaceDetails(placeId: string): Promise<PlaceDetails | null> {
+    // Check cache first
+    const cachedDetails = RestaurantCache.getCachedPlaceDetails(placeId);
+    if (cachedDetails) {
+      return cachedDetails;
+    }
+
     return new Promise((resolve) => {
       if (!this.service) {
         console.error('Google Places service not initialized');
@@ -200,6 +211,9 @@ class PlacesAPIService {
               }
             }
           };
+          
+          // Cache the result for 7 days
+          RestaurantCache.cachePlaceDetails(placeId, placeDetails);
           resolve(placeDetails);
         } else {
           console.error('Places details failed:', status);
@@ -210,9 +224,15 @@ class PlacesAPIService {
   }
 
   /**
-   * Estimate restaurant metrics based on Google Places data
+   * Estimate restaurant metrics based on Google Places data (with caching)
    */
   estimateRestaurantMetrics(placeDetails: PlaceDetails): RestaurantIntelligence {
+    // Check cache first
+    const cachedIntelligence = RestaurantCache.getCachedRestaurantIntelligence(placeDetails.place_id);
+    if (cachedIntelligence) {
+      return cachedIntelligence;
+    }
+
     // Base estimates on price level and review count
     let avgTicket = 25; // default
     let monthlyTransactions = 1000; // default
@@ -245,13 +265,64 @@ class PlacesAPIService {
     const socialMediaLinks: RestaurantIntelligence['socialMediaLinks'] = {};
     // In a real implementation, you'd use your social media detection API here
 
-    return {
+    const intelligence: RestaurantIntelligence = {
       placeDetails,
       estimatedMonthlyRevenue: monthlyRevenue,
       estimatedAvgTicket: avgTicket,
       estimatedMonthlyTransactions: monthlyTransactions,
       socialMediaLinks
     };
+
+    // Cache the result for 7 days
+    RestaurantCache.cacheRestaurantIntelligence(placeDetails.place_id, intelligence);
+
+    return intelligence;
+  }
+
+  /**
+   * Get comprehensive restaurant intelligence including keywords
+   */
+  async getRestaurantIntelligenceWithKeywords(placeId: string): Promise<RestaurantIntelligence> {
+    // Get basic place details
+    const placeDetails = await this.getPlaceDetails(placeId);
+    if (!placeDetails) {
+      throw new Error(`Could not fetch place details for place ID: ${placeId}`);
+    }
+
+    // Get basic restaurant intelligence (estimates, etc.)
+    const baseIntelligence = this.estimateRestaurantMetrics(placeDetails);
+
+    // If no website, return basic intelligence
+    if (!placeDetails.website) {
+      return {
+        ...baseIntelligence,
+        keywordsFetchError: 'No website found for keyword analysis'
+      };
+    }
+
+    // Fetch keywords for the website
+    try {
+      console.log(`Fetching keywords for website: ${placeDetails.website}`);
+      const keywordResult = await dataForSeoRankedKeywordsAPI.fetchKeywordsAsKeywordData(placeDetails.website);
+      
+      if (keywordResult.success) {
+        return {
+          ...baseIntelligence,
+          keywords: keywordResult.keywords
+        };
+      } else {
+        return {
+          ...baseIntelligence,
+          keywordsFetchError: keywordResult.error || 'Failed to fetch keywords'
+        };
+      }
+    } catch (error) {
+      console.error('Error fetching keywords:', error);
+      return {
+        ...baseIntelligence,
+        keywordsFetchError: error instanceof Error ? error.message : 'Unknown error fetching keywords'
+      };
+    }
   }
 
   /**

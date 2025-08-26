@@ -39,6 +39,22 @@ export interface RevenueCalculationInputs {
     position4: number;
     position5: number;
   };
+  
+  // Enhanced social media metrics from API scraping
+  instagramMetrics?: {
+    followersCount: number;
+    postsCount: number;
+    totalLikes: number;
+    username?: string;
+    profilePicUrl?: string;
+  };
+  facebookMetrics?: {
+    followers: number;
+    likes: number;
+    isRunningAds: boolean;
+    isActivePage: boolean;
+    pageName?: string;
+  };
 }
 
 export interface ServiceRevenue {
@@ -103,7 +119,9 @@ export function calculateUnifiedRevenue(inputs: RevenueCalculationInputs): Reven
     socialFollowersInstagram,
     socialFollowersFacebook,
     emailListSize,
-    smsListSize
+    smsListSize,
+    instagramMetrics,
+    facebookMetrics
   } = inputs;
 
   // SEO Calculations
@@ -134,22 +152,83 @@ export function calculateUnifiedRevenue(inputs: RevenueCalculationInputs): Reven
     seoPotentialRevenue = seoCurrentRevenue + seoPotentialIncrease;
   }
 
-  // Social Media Calculations
-  const totalSocialFollowers = socialFollowersInstagram + socialFollowersFacebook;
+  // Enhanced Social Media Calculations using API data and restaurant-stats-markdown.md
+  let socialCurrentRevenue, socialPotentialRevenue;
   
-  // Current social revenue (estimated at 3% of revenue for most restaurants)
-  const socialCurrentRevenue = monthlyRevenue * 0.03;
-  
-  // More realistic social media potential with proper management
-  // Instagram: 1.5% monthly conversion rate (strong visual platform for food)
-  // Facebook: 0.5% monthly conversion rate (lower engagement)
-  // Factor in better content strategy and posting consistency
-  const instagramMonthlyRevenue = socialFollowersInstagram * 0.015 * avgTicket; 
-  const facebookMonthlyRevenue = socialFollowersFacebook * 0.005 * avgTicket;
-  
-  // Add potential from improved content strategy (25% boost)
-  const improvedContentBoost = (instagramMonthlyRevenue + facebookMonthlyRevenue) * 0.25;
-  const socialPotentialRevenue = socialCurrentRevenue + instagramMonthlyRevenue + facebookMonthlyRevenue + improvedContentBoost;
+  // Use enhanced metrics if available, otherwise fallback to basic calculations
+  if (instagramMetrics || facebookMetrics) {
+    // INSTAGRAM CALCULATIONS (Based on restaurant-stats-markdown.md: 3.1% engagement rate)
+    let instagramCurrentRevenue = 0;
+    let instagramPotentialRevenue = 0;
+    
+    if (instagramMetrics) {
+      // Calculate engagement rate from actual data (likes per post)
+      const avgLikesPerPost = instagramMetrics.postsCount > 0 
+        ? instagramMetrics.totalLikes / Math.min(instagramMetrics.postsCount, 10) // Last 10 posts
+        : 0;
+      const engagementRate = instagramMetrics.followersCount > 0 
+        ? avgLikesPerPost / instagramMetrics.followersCount 
+        : 0.031; // Default to industry average 3.1%
+      
+      // Current: Conservative 0.5% follower-to-customer conversion monthly
+      instagramCurrentRevenue = instagramMetrics.followersCount * 0.005 * avgTicket;
+      
+      // Potential: 89% of consumers buy from brands they follow (from stats)
+      // With proper content strategy: 1.8% monthly conversion rate for high-engagement accounts
+      const potentialConversionRate = engagementRate > 0.025 ? 0.018 : 0.012; // Higher rate for engaged audiences
+      instagramPotentialRevenue = instagramMetrics.followersCount * potentialConversionRate * avgTicket;
+    }
+    
+    // FACEBOOK CALCULATIONS (Based on restaurant-stats-markdown.md: 1.3% engagement rate)  
+    let facebookCurrentRevenue = 0;
+    let facebookPotentialRevenue = 0;
+    
+    if (facebookMetrics) {
+      // Current: Basic organic reach (very limited without ads)
+      facebookCurrentRevenue = facebookMetrics.followers * 0.002 * avgTicket;
+      
+      // Potential: Factor in ads if they're running them, page activity, and better strategy
+      let potentialMultiplier = 0.008; // Base conversion rate
+      
+      if (facebookMetrics.isRunningAds) {
+        potentialMultiplier *= 2.5; // Ads significantly boost reach and conversions
+      }
+      
+      if (!facebookMetrics.isActivePage) {
+        potentialMultiplier *= 0.5; // Inactive pages perform poorly
+      }
+      
+      // Add page likes bonus (page likes indicate brand affinity)
+      const pageLikesBonus = facebookMetrics.likes > facebookMetrics.followers 
+        ? (facebookMetrics.likes - facebookMetrics.followers) * 0.001 * avgTicket
+        : 0;
+      
+      facebookPotentialRevenue = (facebookMetrics.followers * potentialMultiplier * avgTicket) + pageLikesBonus;
+    }
+    
+    socialCurrentRevenue = instagramCurrentRevenue + facebookCurrentRevenue;
+    
+    // Add cross-platform synergy boost (10% when both platforms are active)
+    const synergyBoost = (instagramMetrics && facebookMetrics) 
+      ? (instagramPotentialRevenue + facebookPotentialRevenue) * 0.1 
+      : 0;
+      
+    socialPotentialRevenue = instagramPotentialRevenue + facebookPotentialRevenue + synergyBoost;
+    
+  } else {
+    // Fallback to basic calculations when detailed metrics aren't available
+    const totalSocialFollowers = socialFollowersInstagram + socialFollowersFacebook;
+    
+    // Current social revenue (estimated at 3% of revenue for most restaurants)
+    socialCurrentRevenue = monthlyRevenue * 0.03;
+    
+    // Basic potential calculations
+    const instagramMonthlyRevenue = socialFollowersInstagram * 0.015 * avgTicket; 
+    const facebookMonthlyRevenue = socialFollowersFacebook * 0.005 * avgTicket;
+    const improvedContentBoost = (instagramMonthlyRevenue + facebookMonthlyRevenue) * 0.25;
+    
+    socialPotentialRevenue = socialCurrentRevenue + instagramMonthlyRevenue + facebookMonthlyRevenue + improvedContentBoost;
+  }
 
   // SMS Marketing Calculations
   // Most restaurants have zero SMS marketing

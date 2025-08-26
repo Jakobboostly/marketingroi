@@ -31,6 +31,7 @@ interface RevenueAttributionProps {
   emailListSize?: number;
   socialFollowers?: number;
   thirdPartyPercentage?: number;
+  currentSEORevenue?: number;
 }
 
 const RevenueAttribution: React.FC<RevenueAttributionProps> = ({
@@ -44,7 +45,8 @@ const RevenueAttribution: React.FC<RevenueAttributionProps> = ({
   smsListSize = 0,
   emailListSize = 0,
   socialFollowers = 0,
-  thirdPartyPercentage = 20
+  thirdPartyPercentage = 20,
+  currentSEORevenue = 0
 }) => {
   const svgRef = useRef<SVGSVGElement>(null);
   const [hoveredSegment, setHoveredSegment] = useState<string | null>(null);
@@ -66,43 +68,54 @@ const RevenueAttribution: React.FC<RevenueAttributionProps> = ({
       });
     }
     
-    // Local Pack SEO (70% of search traffic) - calculated from keyword counts
-    const totalLocalPackKeywords = localPackKeywords.position1 + localPackKeywords.position2 + localPackKeywords.position3;
-    if (totalLocalPackKeywords > 0) {
-      // Revenue per keyword estimated based on search volume and ticket size
-      const revenuePerKeyword = avgTicket * 50; // Assume 50 searches per keyword per month, 5% conversion
-      const localPackRevenue = (
-        localPackKeywords.position1 * revenuePerKeyword * 0.33 * 0.05 +
-        localPackKeywords.position2 * revenuePerKeyword * 0.22 * 0.05 +
-        localPackKeywords.position3 * revenuePerKeyword * 0.13 * 0.05
-      );
+    // SEO Revenue - Use real keyword-based calculation when available
+    if (currentSEORevenue && currentSEORevenue > 0) {
       attribution.push({
-        channel: 'Local Pack SEO',
-        revenue: localPackRevenue,
-        percentage: (localPackRevenue / monthlyRevenue) * 100,
+        channel: 'SEO (Keywords)',
+        revenue: currentSEORevenue,
+        percentage: (currentSEORevenue / monthlyRevenue) * 100,
         color: '#4ECDC4',
-        details: `${totalLocalPackKeywords} keywords ranked (P1: ${localPackKeywords.position1}, P2: ${localPackKeywords.position2}, P3: ${localPackKeywords.position3})`
+        details: `Real keyword data - positions & search volume`
       });
-    }
-    
-    // Organic Search (30% of search traffic) - calculated from keyword counts
-    const totalOrganicKeywords = organicKeywords.position1 + organicKeywords.position2 + organicKeywords.position3 + organicKeywords.position4 + organicKeywords.position5;
-    if (totalOrganicKeywords > 0) {
-      const revenuePerKeyword = avgTicket * 30; // Lower search volume than Local Pack
-      const organicRevenue = (
-        organicKeywords.position1 * revenuePerKeyword * 0.18 * 0.05 +
-        organicKeywords.position2 * revenuePerKeyword * 0.07 * 0.05 +
-        organicKeywords.position3 * revenuePerKeyword * 0.03 * 0.05 +
-        organicKeywords.position4 * revenuePerKeyword * 0.02 * 0.05 +
-        organicKeywords.position5 * revenuePerKeyword * 0.015 * 0.05
-      );
-      attribution.push({
-        channel: 'Organic Search',
-        revenue: organicRevenue,
-        percentage: (organicRevenue / monthlyRevenue) * 100,
-        color: '#95E1D3',
-        details: `${totalOrganicKeywords} keywords ranked (P1: ${organicKeywords.position1}, P2: ${organicKeywords.position2}, P3: ${organicKeywords.position3}, P4: ${organicKeywords.position4}, P5: ${organicKeywords.position5})`
-      });
+    } else {
+      // Fallback to basic calculations when real data isn't available
+      const totalLocalPackKeywords = localPackKeywords.position1 + localPackKeywords.position2 + localPackKeywords.position3;
+      if (totalLocalPackKeywords > 0) {
+        // Revenue per keyword estimated based on search volume and ticket size
+        const revenuePerKeyword = avgTicket * 50; // Assume 50 searches per keyword per month, 5% conversion
+        const localPackRevenue = (
+          localPackKeywords.position1 * revenuePerKeyword * 0.33 * 0.05 +
+          localPackKeywords.position2 * revenuePerKeyword * 0.22 * 0.05 +
+          localPackKeywords.position3 * revenuePerKeyword * 0.13 * 0.05
+        );
+        attribution.push({
+          channel: 'Local Pack SEO',
+          revenue: localPackRevenue,
+          percentage: (localPackRevenue / monthlyRevenue) * 100,
+          color: '#4ECDC4',
+          details: `${totalLocalPackKeywords} keywords ranked (P1: ${localPackKeywords.position1}, P2: ${localPackKeywords.position2}, P3: ${localPackKeywords.position3})`
+        });
+      }
+      
+      // Organic Search (30% of search traffic) - calculated from keyword counts
+      const totalOrganicKeywords = organicKeywords.position1 + organicKeywords.position2 + organicKeywords.position3 + organicKeywords.position4 + organicKeywords.position5;
+      if (totalOrganicKeywords > 0) {
+        const revenuePerKeyword = avgTicket * 30; // Lower search volume than Local Pack
+        const organicRevenue = (
+          organicKeywords.position1 * revenuePerKeyword * 0.18 * 0.05 +
+          organicKeywords.position2 * revenuePerKeyword * 0.07 * 0.05 +
+          organicKeywords.position3 * revenuePerKeyword * 0.03 * 0.05 +
+          organicKeywords.position4 * revenuePerKeyword * 0.02 * 0.05 +
+          organicKeywords.position5 * revenuePerKeyword * 0.015 * 0.05
+        );
+        attribution.push({
+          channel: 'Organic Search',
+          revenue: organicRevenue,
+          percentage: (organicRevenue / monthlyRevenue) * 100,
+          color: '#95E1D3',
+          details: `${totalOrganicKeywords} keywords ranked (P1: ${organicKeywords.position1}, P2: ${organicKeywords.position2}, P3: ${organicKeywords.position3}, P4: ${organicKeywords.position4}, P5: ${organicKeywords.position5})`
+        });
+      }
     }
     
     // Loyalty Program (12-18% more revenue from members)
@@ -252,7 +265,7 @@ const RevenueAttribution: React.FC<RevenueAttributionProps> = ({
       .text('Monthly Revenue');
 
   }, [monthlyRevenue, avgTicket, localPackPosition, organicPosition, 
-      hasLoyaltyProgram, smsListSize, emailListSize, socialFollowers, thirdPartyPercentage]);
+      hasLoyaltyProgram, smsListSize, emailListSize, socialFollowers, thirdPartyPercentage, currentSEORevenue]);
 
   const data = calculateAttribution();
 

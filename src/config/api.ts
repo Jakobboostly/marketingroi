@@ -8,6 +8,10 @@ export const config = {
     apiKey: import.meta.env.VITE_GOOGLE_PLACES_API_KEY || '',
     baseUrl: 'https://maps.googleapis.com/maps/api/place'
   },
+  apify: {
+    token: import.meta.env.VITE_APIFY_TOKEN || '',
+    actorId: 'nwua9Gu5YrADL7ZDj'
+  },
   seo: {
     apiKey: import.meta.env.VITE_SEO_API_KEY || '',
     baseUrl: ''

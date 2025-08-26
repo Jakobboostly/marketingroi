@@ -11,7 +11,7 @@ interface MetricCard {
 }
 
 const ComprehensiveMetrics: React.FC = () => {
-  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [selectedCategory, setSelectedCategory] = useState<string>('SEO & Local Search');
 
   const metricsData: MetricCard[] = [
     {
