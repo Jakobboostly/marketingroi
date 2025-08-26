@@ -7,7 +7,7 @@ export interface InstagramMetrics {
   error?: string;
 }
 
-const APIFY_TOKEN = process.env.VITE_APIFY_TOKEN || '';
+const APIFY_TOKEN = import.meta.env.VITE_APIFY_TOKEN || '';
 const ACTOR_ID = 'shu8hvrXbJbY3Eb9W';
 
 export async function fetchInstagramMetrics(instagramUrl: string): Promise<InstagramMetrics> {

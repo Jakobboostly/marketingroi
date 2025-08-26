@@ -7,7 +7,7 @@ export interface FacebookMetrics {
   error?: string;
 }
 
-const APIFY_TOKEN = process.env.VITE_APIFY_TOKEN || '';
+const APIFY_TOKEN = import.meta.env.VITE_APIFY_TOKEN || '';
 const ACTOR_ID = '4Hv5RhChiaDk6iwad';
 
 export async function fetchFacebookMetrics(facebookUrl: string): Promise<FacebookMetrics> {
