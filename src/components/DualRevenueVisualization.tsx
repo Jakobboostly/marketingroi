@@ -401,6 +401,90 @@ const DualRevenueVisualization: React.FC<DualRevenueVisualizationProps> = ({
         </p>
       </div>
 
+      {/* Dual Charts */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: '1fr 1fr',
+        gap: '40px',
+        marginBottom: '40px'
+      }}>
+        {/* Current Revenue Chart */}
+        <div style={{
+          background: 'white',
+          borderRadius: '16px',
+          padding: '30px',
+          boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
+          textAlign: 'center',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center'
+        }}>
+          <h3 style={{
+            fontSize: '1.5rem',
+            fontWeight: '700',
+            color: '#334155',
+            marginBottom: '20px'
+          }}>
+            Current Revenue DNA
+          </h3>
+          <div style={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
+            <svg ref={currentChartRef} width={480} height={400}></svg>
+          </div>
+        </div>
+
+        {/* Optimized Revenue Chart - Premium Treatment */}
+        <div style={{
+          background: 'linear-gradient(135deg, #fff7ed 0%, #fef3c7 100%)',
+          borderRadius: '16px',
+          padding: '30px',
+          boxShadow: '0 8px 30px rgba(255,215,0,0.3)',
+          border: '2px solid #FFD700',
+          textAlign: 'center',
+          position: 'relative',
+          overflow: 'hidden',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center'
+        }}>
+          {/* Background glow effect */}
+          <div style={{
+            position: 'absolute',
+            top: '-50%',
+            left: '-50%',
+            width: '200%',
+            height: '200%',
+            background: 'radial-gradient(circle, rgba(255,215,0,0.1) 0%, transparent 70%)',
+            animation: 'pulse 3s ease-in-out infinite',
+            pointerEvents: 'none'
+          }} />
+          
+          <div style={{ 
+            position: 'relative', 
+            zIndex: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center'
+          }}>
+            <h3 style={{
+              fontSize: '1.8rem',
+              fontWeight: '700',
+              background: 'linear-gradient(135deg, #b45309 0%, #92400e 100%)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              backgroundClip: 'text',
+              marginBottom: '20px'
+            }}>
+              Optimized Revenue DNA
+            </h3>
+            <div style={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
+              <svg ref={optimizedChartRef} width={650} height={550}></svg>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Interactive Levers */}
       <div style={{
         marginBottom: '40px',
@@ -547,85 +631,125 @@ const DualRevenueVisualization: React.FC<DualRevenueVisualizationProps> = ({
         </div>
       </div>
 
-      {/* Dual Charts */}
+      {/* Channel Breakdown Panels */}
       <div style={{
         display: 'grid',
         gridTemplateColumns: '1fr 1fr',
         gap: '40px',
         marginBottom: '40px'
       }}>
-        {/* Current Revenue Chart */}
-        <div style={{
-          background: 'white',
-          borderRadius: '16px',
-          padding: '30px',
-          boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
-          textAlign: 'center',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center'
-        }}>
+        {/* Current Breakdown */}
+        <div>
           <h3 style={{
-            fontSize: '1.5rem',
+            fontSize: '1.4rem',
             fontWeight: '700',
-            color: '#334155',
-            marginBottom: '20px'
+            marginBottom: '20px',
+            color: '#334155'
           }}>
-            Current Revenue DNA
+            📊 Current Channel Breakdown
           </h3>
-          <div style={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
-            <svg ref={currentChartRef} width={480} height={400}></svg>
-          </div>
+          {currentData.map((item) => (
+            <div 
+              key={item.channel}
+              style={{ 
+                marginBottom: '12px',
+                padding: '15px',
+                backgroundColor: hoveredSegment === item.channel ? '#e8f4f8' : 'white',
+                borderRadius: '8px',
+                border: '1px solid #e2e8f0',
+                transition: 'all 0.2s'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
+                <div 
+                  style={{ 
+                    width: '12px', 
+                    height: '12px', 
+                    backgroundColor: item.color,
+                    borderRadius: '2px',
+                    marginRight: '10px'
+                  }}
+                />
+                <span style={{ fontWeight: '700', flex: 1, fontSize: '14px' }}>{item.channel}</span>
+                <span style={{ fontWeight: '700', fontSize: '16px' }}>${Math.round(item.revenue).toLocaleString()}</span>
+              </div>
+              {item.details && (
+                <div style={{ fontSize: '12px', color: '#64748b', marginLeft: '22px' }}>
+                  {item.details}
+                </div>
+              )}
+            </div>
+          ))}
         </div>
 
-        {/* Optimized Revenue Chart - Premium Treatment */}
-        <div style={{
-          background: 'linear-gradient(135deg, #fff7ed 0%, #fef3c7 100%)',
-          borderRadius: '16px',
-          padding: '30px',
-          boxShadow: '0 8px 30px rgba(255,215,0,0.3)',
-          border: '2px solid #FFD700',
-          textAlign: 'center',
-          position: 'relative',
-          overflow: 'hidden',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center'
-        }}>
-          {/* Background glow effect */}
-          <div style={{
-            position: 'absolute',
-            top: '-50%',
-            left: '-50%',
-            width: '200%',
-            height: '200%',
-            background: 'radial-gradient(circle, rgba(255,215,0,0.1) 0%, transparent 70%)',
-            animation: 'pulse 3s ease-in-out infinite',
-            pointerEvents: 'none'
-          }} />
-          
-          <div style={{ 
-            position: 'relative', 
-            zIndex: 1,
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center'
+        {/* Optimized Breakdown */}
+        <div>
+          <h3 style={{
+            fontSize: '1.4rem',
+            fontWeight: '700',
+            marginBottom: '20px',
+            background: 'linear-gradient(135deg, #b45309 0%, #92400e 100%)',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            backgroundClip: 'text'
           }}>
-            <h3 style={{
-              fontSize: '1.8rem',
-              fontWeight: '700',
-              background: 'linear-gradient(135deg, #b45309 0%, #92400e 100%)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-              backgroundClip: 'text',
-              marginBottom: '20px'
-            }}>
-              Optimized Revenue DNA
-            </h3>
-            <div style={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
-              <svg ref={optimizedChartRef} width={650} height={550}></svg>
+            🚀 Optimized Channel Breakdown
+          </h3>
+          {optimizedData.map((item) => (
+            <div 
+              key={item.channel}
+              style={{ 
+                marginBottom: '12px',
+                padding: '15px',
+                backgroundColor: hoveredSegment === item.channel ? '#fef3c7' : 'rgba(255,255,255,0.8)',
+                borderRadius: '8px',
+                border: '1px solid #fbbf24',
+                transition: 'all 0.2s'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
+                <div 
+                  style={{ 
+                    width: '12px', 
+                    height: '12px', 
+                    backgroundColor: item.color,
+                    borderRadius: '2px',
+                    marginRight: '10px'
+                  }}
+                />
+                <span style={{ fontWeight: '700', flex: 1, fontSize: '14px' }}>{item.channel}</span>
+                <span style={{ fontWeight: '700', fontSize: '16px' }}>${Math.round(item.revenue).toLocaleString()}</span>
+              </div>
+              {item.details && (
+                <div style={{ fontSize: '12px', color: '#92400e', marginLeft: '22px' }}>
+                  {item.details}
+                </div>
+              )}
+            </div>
+          ))}
+          
+          {/* Growth Summary */}
+          <div style={{
+            marginTop: '20px',
+            padding: '20px',
+            background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+            borderRadius: '8px',
+            color: 'white'
+          }}>
+            <h4 style={{ margin: '0 0 10px 0', fontSize: '16px', fontWeight: '700' }}>
+              💎 Revenue Growth Summary
+            </h4>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+              <span>Additional Monthly Revenue:</span>
+              <span style={{ fontWeight: '700' }}>+${Math.round(growthPotential).toLocaleString()}</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+              <span>Growth Percentage:</span>
+              <span style={{ fontWeight: '700' }}>{growthPercentage.toFixed(1)}%</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span>Annual Revenue Impact:</span>
+              <span style={{ fontWeight: '700' }}>${Math.round(growthPotential * 12).toLocaleString()}</span>
             </div>
           </div>
         </div>
@@ -876,129 +1000,6 @@ const DualRevenueVisualization: React.FC<DualRevenueVisualizationProps> = ({
           </div>
         </div>
       )}
-
-      {/* Channel Breakdown Panels */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: '1fr 1fr',
-        gap: '40px'
-      }}>
-        {/* Current Breakdown */}
-        <div>
-          <h3 style={{
-            fontSize: '1.4rem',
-            fontWeight: '700',
-            marginBottom: '20px',
-            color: '#334155'
-          }}>
-            📊 Current Channel Breakdown
-          </h3>
-          {currentData.map((item) => (
-            <div 
-              key={item.channel}
-              style={{ 
-                marginBottom: '12px',
-                padding: '15px',
-                backgroundColor: hoveredSegment === item.channel ? '#e8f4f8' : 'white',
-                borderRadius: '8px',
-                border: '1px solid #e2e8f0',
-                transition: 'all 0.2s'
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
-                <div 
-                  style={{ 
-                    width: '12px', 
-                    height: '12px', 
-                    backgroundColor: item.color,
-                    borderRadius: '2px',
-                    marginRight: '10px'
-                  }}
-                />
-                <span style={{ fontWeight: '700', flex: 1, fontSize: '14px' }}>{item.channel}</span>
-                <span style={{ fontWeight: '700', fontSize: '16px' }}>${Math.round(item.revenue).toLocaleString()}</span>
-              </div>
-              {item.details && (
-                <div style={{ fontSize: '12px', color: '#64748b', marginLeft: '22px' }}>
-                  {item.details}
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-
-        {/* Optimized Breakdown */}
-        <div>
-          <h3 style={{
-            fontSize: '1.4rem',
-            fontWeight: '700',
-            marginBottom: '20px',
-            background: 'linear-gradient(135deg, #b45309 0%, #92400e 100%)',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
-            backgroundClip: 'text'
-          }}>
-            🚀 Optimized Channel Breakdown
-          </h3>
-          {optimizedData.map((item) => (
-            <div 
-              key={item.channel}
-              style={{ 
-                marginBottom: '12px',
-                padding: '15px',
-                backgroundColor: hoveredSegment === item.channel ? '#fef3c7' : 'rgba(255,255,255,0.8)',
-                borderRadius: '8px',
-                border: '1px solid #fbbf24',
-                transition: 'all 0.2s'
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
-                <div 
-                  style={{ 
-                    width: '12px', 
-                    height: '12px', 
-                    backgroundColor: item.color,
-                    borderRadius: '2px',
-                    marginRight: '10px'
-                  }}
-                />
-                <span style={{ fontWeight: '700', flex: 1, fontSize: '14px' }}>{item.channel}</span>
-                <span style={{ fontWeight: '700', fontSize: '16px' }}>${Math.round(item.revenue).toLocaleString()}</span>
-              </div>
-              {item.details && (
-                <div style={{ fontSize: '12px', color: '#92400e', marginLeft: '22px' }}>
-                  {item.details}
-                </div>
-              )}
-            </div>
-          ))}
-          
-          {/* Growth Summary */}
-          <div style={{
-            marginTop: '20px',
-            padding: '20px',
-            background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-            borderRadius: '8px',
-            color: 'white'
-          }}>
-            <h4 style={{ margin: '0 0 10px 0', fontSize: '16px', fontWeight: '700' }}>
-              💎 Revenue Growth Summary
-            </h4>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-              <span>Additional Monthly Revenue:</span>
-              <span style={{ fontWeight: '700' }}>+${Math.round(growthPotential).toLocaleString()}</span>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-              <span>Growth Percentage:</span>
-              <span style={{ fontWeight: '700' }}>{growthPercentage.toFixed(1)}%</span>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span>Annual Revenue Impact:</span>
-              <span style={{ fontWeight: '700' }}>${Math.round(growthPotential * 12).toLocaleString()}</span>
-            </div>
-          </div>
-        </div>
-      </div>
 
       {/* CSS Animation for pulse effect */}
       <style>{`
