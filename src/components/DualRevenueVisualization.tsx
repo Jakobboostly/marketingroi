@@ -265,9 +265,9 @@ const DualRevenueVisualization: React.FC<DualRevenueVisualizationProps> = ({
     const svg = d3.select(svgRef.current);
     svg.selectAll('*').remove();
 
-    // Use fixed dimensions - scaling will be handled by CSS transform
-    const width = isOptimized ? 550 : 480;
-    const height = isOptimized ? 500 : 400;
+    // Use same base dimensions for both charts - scaling will be handled by CSS transform
+    const width = 480;
+    const height = 400;
     const radius = Math.min(width, height) / 2 - 40;
 
     const g = svg
@@ -499,8 +499,8 @@ const DualRevenueVisualization: React.FC<DualRevenueVisualizationProps> = ({
             }}>
               <svg 
                 ref={optimizedChartRef} 
-                width={550} 
-                height={500}
+                width={480} 
+                height={400}
                 style={{
                   transform: `scale(${optimizedChartScale})`,
                   transformOrigin: 'center center',
