@@ -631,6 +631,252 @@ const DualRevenueVisualization: React.FC<DualRevenueVisualizationProps> = ({
         </div>
       </div>
 
+      {/* SEO Opportunities Showcase */}
+      {restaurantData && restaurantData.keywords && restaurantData.keywords.length > 0 && (
+        <div style={{
+          marginBottom: '40px',
+          background: 'white',
+          borderRadius: '16px',
+          padding: '30px',
+          boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
+          border: '1px solid #e2e8f0'
+        }}>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            marginBottom: '20px'
+          }}>
+            <span style={{ fontSize: '24px', marginRight: '12px' }}>🎯</span>
+            <h3 style={{
+              fontSize: '1.8rem',
+              fontWeight: '700',
+              color: '#334155',
+              margin: 0
+            }}>
+              Your Top SEO Opportunities
+            </h3>
+          </div>
+          
+          <p style={{
+            fontSize: '16px',
+            color: '#64748b',
+            marginBottom: '25px'
+          }}>
+            {levers.find(l => l.id === 'seo')?.isActive 
+              ? 'Here\'s how we\'ll optimize your keyword rankings:'
+              : 'Unlock revenue potential with strategic keyword improvements:'
+            }
+          </p>
+
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: '2fr 100px 100px 120px 140px',
+            gap: '15px',
+            alignItems: 'center',
+            marginBottom: '16px',
+            padding: '12px 20px',
+            backgroundColor: '#334155',
+            borderRadius: '8px',
+            fontSize: '12px',
+            fontWeight: '600',
+            color: 'white',
+            textTransform: 'uppercase',
+            letterSpacing: '0.5px'
+          }}>
+            <div>Keyword</div>
+            <div style={{ textAlign: 'center' }}>Current</div>
+            <div style={{ textAlign: 'center' }}>Target</div>
+            <div style={{ textAlign: 'center' }}>Volume</div>
+            <div style={{ textAlign: 'center' }}>Revenue Impact</div>
+          </div>
+
+          {restaurantData.keywords
+            .map(keyword => {
+              if (!keyword || typeof keyword !== 'object') return null;
+              
+              const currentPosition = Number(keyword.currentPosition) || 5;
+              const targetPosition = Math.max(1, currentPosition - 2);
+              const searchVolume = Number(keyword.searchVolume) || 0;
+              const avgTicketCalc = Number(avgTicket) || 45;
+              
+              if (searchVolume <= 0) return null;
+              
+              const getCTR = (position: number) => {
+                const ctrRates = { 1: 0.25, 2: 0.18, 3: 0.12, 4: 0.08, 5: 0.05, 6: 0.03, 7: 0.02, 8: 0.01, 9: 0.01, 10: 0.01 };
+                return ctrRates[position as keyof typeof ctrRates] || 0.005;
+              };
+              
+              const conversionRate = 0.25;
+              const currentRevenue = Math.floor(searchVolume * getCTR(currentPosition) * conversionRate * avgTicketCalc) || 0;
+              const targetRevenue = Math.floor(searchVolume * getCTR(targetPosition) * conversionRate * avgTicketCalc) || 0;
+              const improvementRevenue = Math.max(0, targetRevenue - currentRevenue) || 0;
+              
+              return {
+                ...keyword,
+                currentPosition,
+                targetPosition,
+                searchVolume,
+                improvementRevenue
+              };
+            })
+            .filter(Boolean)
+            .sort((a, b) => (b?.improvementRevenue || 0) - (a?.improvementRevenue || 0))
+            .slice(0, 5) // Show top 5 opportunities
+            .map((keyword, index) => {
+              if (!keyword) return null;
+              
+              const seoLever = levers.find(l => l.id === 'seo');
+              const showOptimized = seoLever?.isActive;
+              
+              return (
+                <div key={index} style={{
+                  display: 'grid',
+                  gridTemplateColumns: '2fr 100px 100px 120px 140px',
+                  gap: '15px',
+                  alignItems: 'center',
+                  padding: '18px 20px',
+                  backgroundColor: showOptimized ? '#f0f9ff' : 'white',
+                  borderRadius: '8px',
+                  marginBottom: '8px',
+                  border: showOptimized ? '2px solid #0ea5e9' : '1px solid #e2e8f0',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+                  transition: 'all 0.3s ease'
+                }}>
+                  <div style={{
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    color: '#334155',
+                    display: 'flex',
+                    alignItems: 'center'
+                  }}>
+                    {keyword.keyword}
+                    {index < 2 && (
+                      <span style={{
+                        marginLeft: '8px',
+                        padding: '2px 6px',
+                        backgroundColor: index === 0 ? '#dc2626' : '#f59e0b',
+                        color: 'white',
+                        fontSize: '10px',
+                        borderRadius: '4px',
+                        fontWeight: '600'
+                      }}>
+                        {index === 0 ? 'HIGH IMPACT' : 'QUICK WIN'}
+                      </span>
+                    )}
+                  </div>
+                  
+                  <div style={{
+                    textAlign: 'center',
+                    fontSize: '16px',
+                    fontWeight: '700',
+                    color: keyword.currentPosition <= 3 ? '#10b981' : keyword.currentPosition <= 10 ? '#f59e0b' : '#ef4444'
+                  }}>
+                    #{keyword.currentPosition}
+                  </div>
+                  
+                  <div style={{
+                    textAlign: 'center',
+                    fontSize: '16px',
+                    fontWeight: '700',
+                    color: showOptimized ? '#0ea5e9' : '#10b981'
+                  }}>
+                    #{showOptimized ? keyword.targetPosition : keyword.targetPosition}
+                  </div>
+                  
+                  <div style={{
+                    textAlign: 'center',
+                    fontSize: '12px',
+                    color: '#64748b'
+                  }}>
+                    {keyword.searchVolume.toLocaleString()}
+                  </div>
+                  
+                  <div style={{
+                    textAlign: 'center',
+                    fontSize: '14px'
+                  }}>
+                    <div style={{
+                      fontWeight: '700',
+                      color: showOptimized ? '#0ea5e9' : '#10b981',
+                      fontSize: '16px',
+                      marginBottom: '2px'
+                    }}>
+                      +${keyword.improvementRevenue.toLocaleString()}
+                    </div>
+                    <div style={{
+                      fontSize: '10px',
+                      color: '#64748b'
+                    }}>
+                      monthly
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          
+          <div style={{
+            marginTop: '20px',
+            padding: '15px 20px',
+            background: levers.find(l => l.id === 'seo')?.isActive ? 
+              'linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%)' : 
+              'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
+            borderRadius: '8px',
+            border: levers.find(l => l.id === 'seo')?.isActive ? 'none' : '1px solid #e2e8f0',
+            color: levers.find(l => l.id === 'seo')?.isActive ? 'white' : '#334155'
+          }}>
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center'
+            }}>
+              <div>
+                <div style={{ fontSize: '14px', fontWeight: '600', marginBottom: '4px' }}>
+                  {levers.find(l => l.id === 'seo')?.isActive ? 
+                    '✓ SEO Optimization Active' : 
+                    'Total SEO Opportunity'
+                  }
+                </div>
+                <div style={{ fontSize: '12px', opacity: 0.8 }}>
+                  {levers.find(l => l.id === 'seo')?.isActive ?
+                    'Rankings improved, revenue flowing' :
+                    'Additional monthly revenue potential'
+                  }
+                </div>
+              </div>
+              <div style={{
+                fontSize: '24px',
+                fontWeight: '700'
+              }}>
+                +${restaurantData.keywords
+                  .slice(0, 5)
+                  .reduce((total, keyword) => {
+                    if (!keyword || typeof keyword !== 'object') return total;
+                    
+                    const currentPosition = Number(keyword.currentPosition) || 5;
+                    const targetPosition = Math.max(1, currentPosition - 2);
+                    const searchVolume = Number(keyword.searchVolume) || 0;
+                    const avgTicketCalc = Number(avgTicket) || 45;
+                    
+                    if (searchVolume <= 0) return total;
+                    
+                    const getCTR = (position: number) => {
+                      const ctrRates = { 1: 0.25, 2: 0.18, 3: 0.12, 4: 0.08, 5: 0.05, 6: 0.03, 7: 0.02, 8: 0.01, 9: 0.01, 10: 0.01 };
+                      return ctrRates[position as keyof typeof ctrRates] || 0.005;
+                    };
+                    
+                    const conversionRate = 0.25;
+                    const currentRevenue = Math.floor(searchVolume * getCTR(currentPosition) * conversionRate * avgTicketCalc) || 0;
+                    const targetRevenue = Math.floor(searchVolume * getCTR(targetPosition) * conversionRate * avgTicketCalc) || 0;
+                    const improvement = Math.max(0, targetRevenue - currentRevenue) || 0;
+                    
+                    return total + improvement;
+                  }, 0).toLocaleString()}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Channel Breakdown Panels */}
       <div style={{
         display: 'grid',
