@@ -250,6 +250,21 @@ const DualRevenueVisualization: React.FC<DualRevenueVisualizationProps> = ({
     return attribution.sort((a, b) => b.revenue - a.revenue);
   };
 
+  // Calculate dynamic size for optimized chart based on active levers
+  const getOptimizedChartSize = () => {
+    const baseSize = { width: 500, height: 450 };
+    const activeLeverCount = levers.filter(l => l.isActive).length;
+    
+    // Grow by 50px width/height for each active lever
+    const growthPerLever = 50;
+    const totalGrowth = activeLeverCount * growthPerLever;
+    
+    return {
+      width: baseSize.width + totalGrowth,
+      height: baseSize.height + totalGrowth
+    };
+  };
+
   // D3 Chart rendering function
   const renderChart = (svgRef: React.RefObject<SVGSVGElement>, data: AttributionData[], isOptimized: boolean = false) => {
     if (!svgRef.current) return;
@@ -257,8 +272,16 @@ const DualRevenueVisualization: React.FC<DualRevenueVisualizationProps> = ({
     const svg = d3.select(svgRef.current);
     svg.selectAll('*').remove();
 
-    const width = isOptimized ? 650 : 480; // Optimized chart even larger for maximum impact
-    const height = isOptimized ? 550 : 400;
+    let width, height;
+    if (isOptimized) {
+      const optimizedSize = getOptimizedChartSize();
+      width = optimizedSize.width;
+      height = optimizedSize.height;
+    } else {
+      width = 480;
+      height = 400;
+    }
+    
     const radius = Math.min(width, height) / 2 - 40;
 
     const g = svg
@@ -368,6 +391,7 @@ const DualRevenueVisualization: React.FC<DualRevenueVisualizationProps> = ({
   const totalOptimizedRevenue = optimizedData.reduce((sum, d) => sum + d.revenue, 0);
   const growthPotential = totalOptimizedRevenue - monthlyRevenue;
   const growthPercentage = (growthPotential / monthlyRevenue) * 100;
+  const optimizedChartSize = getOptimizedChartSize();
 
   return (
     <div style={{ fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif" }}>
@@ -438,15 +462,17 @@ const DualRevenueVisualization: React.FC<DualRevenueVisualizationProps> = ({
           background: 'linear-gradient(135deg, #fff7ed 0%, #fef3c7 100%)',
           borderRadius: '16px',
           padding: '30px',
-          boxShadow: '0 8px 30px rgba(255,215,0,0.3)',
-          border: '2px solid #FFD700',
+          boxShadow: `0 12px ${20 + (levers.filter(l => l.isActive).length * 10)}px rgba(255,215,0,${0.3 + (levers.filter(l => l.isActive).length * 0.1)})`,
+          border: `${2 + levers.filter(l => l.isActive).length}px solid #FFD700`,
           textAlign: 'center',
           position: 'relative',
           overflow: 'hidden',
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
-          justifyContent: 'center'
+          justifyContent: 'center',
+          transition: 'all 0.8s cubic-bezier(0.4, 0, 0.2, 1)',
+          transform: `scale(${1 + (levers.filter(l => l.isActive).length * 0.02)})` // Subtle container scale
         }}>
           {/* Background glow effect */}
           <div style={{
@@ -455,8 +481,8 @@ const DualRevenueVisualization: React.FC<DualRevenueVisualizationProps> = ({
             left: '-50%',
             width: '200%',
             height: '200%',
-            background: 'radial-gradient(circle, rgba(255,215,0,0.1) 0%, transparent 70%)',
-            animation: 'pulse 3s ease-in-out infinite',
+            background: `radial-gradient(circle, rgba(255,215,0,${0.1 + (levers.filter(l => l.isActive).length * 0.05)}) 0%, transparent 70%)`,
+            animation: `pulse ${3 - (levers.filter(l => l.isActive).length * 0.3)}s ease-in-out infinite`,
             pointerEvents: 'none'
           }} />
           
@@ -478,8 +504,22 @@ const DualRevenueVisualization: React.FC<DualRevenueVisualizationProps> = ({
             }}>
               Optimized Revenue DNA
             </h3>
-            <div style={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
-              <svg ref={optimizedChartRef} width={650} height={550}></svg>
+            <div style={{ 
+              display: 'flex', 
+              justifyContent: 'center', 
+              width: '100%',
+              transition: 'all 0.8s cubic-bezier(0.4, 0, 0.2, 1)',
+              minHeight: `${optimizedChartSize.height + 40}px`
+            }}>
+              <svg 
+                ref={optimizedChartRef} 
+                width={optimizedChartSize.width} 
+                height={optimizedChartSize.height}
+                style={{
+                  transition: 'all 0.8s cubic-bezier(0.4, 0, 0.2, 1)',
+                  filter: 'drop-shadow(0 8px 25px rgba(255,215,0,0.3))'
+                }}
+              ></svg>
             </div>
           </div>
         </div>
