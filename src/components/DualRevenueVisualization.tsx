@@ -280,7 +280,7 @@ const DualRevenueVisualization: React.FC<DualRevenueVisualizationProps> = ({
       .filter(Boolean);
 
     if (activeServices.length === 0) {
-      return 'Revenue DNA';
+      return 'Revenue DNA with no changes';
     }
 
     return `Revenue DNA + ${activeServices.join(' + ')}`;
