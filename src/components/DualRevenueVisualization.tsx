@@ -250,19 +250,12 @@ const DualRevenueVisualization: React.FC<DualRevenueVisualizationProps> = ({
     return attribution.sort((a, b) => b.revenue - a.revenue);
   };
 
-  // Calculate dynamic size for optimized chart based on active levers
-  const getOptimizedChartSize = () => {
-    const baseSize = { width: 500, height: 450 };
+  // Calculate dynamic scale for optimized chart based on active levers
+  const getOptimizedChartScale = () => {
     const activeLeverCount = levers.filter(l => l.isActive).length;
-    
-    // Grow by 50px width/height for each active lever
-    const growthPerLever = 50;
-    const totalGrowth = activeLeverCount * growthPerLever;
-    
-    return {
-      width: baseSize.width + totalGrowth,
-      height: baseSize.height + totalGrowth
-    };
+    // Base scale 1.0, grow by 0.15 for each active lever (smoother than size changes)
+    const scalePerLever = 0.15;
+    return 1.0 + (activeLeverCount * scalePerLever);
   };
 
   // D3 Chart rendering function
@@ -272,16 +265,9 @@ const DualRevenueVisualization: React.FC<DualRevenueVisualizationProps> = ({
     const svg = d3.select(svgRef.current);
     svg.selectAll('*').remove();
 
-    let width, height;
-    if (isOptimized) {
-      const optimizedSize = getOptimizedChartSize();
-      width = optimizedSize.width;
-      height = optimizedSize.height;
-    } else {
-      width = 480;
-      height = 400;
-    }
-    
+    // Use fixed dimensions - scaling will be handled by CSS transform
+    const width = isOptimized ? 550 : 480;
+    const height = isOptimized ? 500 : 400;
     const radius = Math.min(width, height) / 2 - 40;
 
     const g = svg
@@ -391,7 +377,7 @@ const DualRevenueVisualization: React.FC<DualRevenueVisualizationProps> = ({
   const totalOptimizedRevenue = optimizedData.reduce((sum, d) => sum + d.revenue, 0);
   const growthPotential = totalOptimizedRevenue - monthlyRevenue;
   const growthPercentage = (growthPotential / monthlyRevenue) * 100;
-  const optimizedChartSize = getOptimizedChartSize();
+  const optimizedChartScale = getOptimizedChartScale();
 
   return (
     <div style={{ fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif" }}>
@@ -471,8 +457,7 @@ const DualRevenueVisualization: React.FC<DualRevenueVisualizationProps> = ({
           flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
-          transition: 'all 0.8s cubic-bezier(0.4, 0, 0.2, 1)',
-          transform: `scale(${1 + (levers.filter(l => l.isActive).length * 0.02)})` // Subtle container scale
+          transition: 'all 0.8s cubic-bezier(0.4, 0, 0.2, 1)'
         }}>
           {/* Background glow effect */}
           <div style={{
@@ -507,17 +492,20 @@ const DualRevenueVisualization: React.FC<DualRevenueVisualizationProps> = ({
             <div style={{ 
               display: 'flex', 
               justifyContent: 'center', 
+              alignItems: 'center',
               width: '100%',
-              transition: 'all 0.8s cubic-bezier(0.4, 0, 0.2, 1)',
-              minHeight: `${optimizedChartSize.height + 40}px`
+              height: '600px', // Fixed container height to prevent layout shifts
+              overflow: 'visible' // Allow chart to grow beyond container
             }}>
               <svg 
                 ref={optimizedChartRef} 
-                width={optimizedChartSize.width} 
-                height={optimizedChartSize.height}
+                width={550} 
+                height={500}
                 style={{
-                  transition: 'all 0.8s cubic-bezier(0.4, 0, 0.2, 1)',
-                  filter: 'drop-shadow(0 8px 25px rgba(255,215,0,0.3))'
+                  transform: `scale(${optimizedChartScale})`,
+                  transformOrigin: 'center center',
+                  transition: 'transform 0.8s cubic-bezier(0.4, 0, 0.2, 1)',
+                  filter: `drop-shadow(0 8px 25px rgba(255,215,0,${0.3 + (levers.filter(l => l.isActive).length * 0.1)}))`,
                 }}
               ></svg>
             </div>
