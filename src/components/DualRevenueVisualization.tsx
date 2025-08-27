@@ -1,0 +1,768 @@
+import React, { useEffect, useRef, useState, useMemo } from 'react';
+import * as d3 from 'd3';
+import { channelROICalculators } from '../data/restaurantStats';
+import { calculateUnifiedRevenue, RevenueCalculationInputs } from '../services/revenueCalculations';
+
+interface AttributionData {
+  channel: string;
+  revenue: number;
+  percentage: number;
+  color: string;
+  details?: string;
+}
+
+interface LeverData {
+  id: string;
+  name: string;
+  isActive: boolean;
+  currentRevenue: number;
+  potentialRevenue: number;
+  color: string;
+  icon: string;
+  methodology: string;
+  dataSource: string;
+}
+
+interface DualRevenueVisualizationProps {
+  monthlyRevenue: number;
+  avgTicket: number;
+  monthlyTransactions: number;
+  localPackPosition?: number;
+  organicPosition?: number;
+  localPackKeywords?: {
+    position1: number;
+    position2: number;
+    position3: number;
+  };
+  organicKeywords?: {
+    position1: number;
+    position2: number;
+    position3: number;
+    position4: number;
+    position5: number;
+  };
+  hasLoyaltyProgram?: boolean;
+  smsListSize?: number;
+  emailListSize?: number;
+  socialFollowers?: number;
+  thirdPartyPercentage?: number;
+  currentSEORevenue?: number;
+  restaurantData?: RevenueCalculationInputs;
+}
+
+const DualRevenueVisualization: React.FC<DualRevenueVisualizationProps> = ({
+  monthlyRevenue = 50000,
+  avgTicket = 25,
+  monthlyTransactions = 2000,
+  hasLoyaltyProgram = false,
+  smsListSize = 0,
+  emailListSize = 0,
+  socialFollowers = 0,
+  thirdPartyPercentage = 20,
+  currentSEORevenue = 0,
+  restaurantData
+}) => {
+  const currentChartRef = useRef<SVGSVGElement>(null);
+  const optimizedChartRef = useRef<SVGSVGElement>(null);
+  const [hoveredSegment, setHoveredSegment] = useState<string | null>(null);
+  const [leverStates, setLeverStates] = useState<{[key: string]: boolean}>({});
+
+  // Calculate lever data using unified revenue calculations
+  const leverCalculations = useMemo(() => {
+    let seoCurrentRevenue, seoPotentialRevenue, socialCurrentRevenue, socialPotentialRevenue, smsCurrentRevenue, smsPotentialRevenue;
+    
+    if (restaurantData) {
+      const unifiedCalcs = calculateUnifiedRevenue(restaurantData);
+      
+      seoCurrentRevenue = unifiedCalcs.seo.currentRevenue;
+      seoPotentialRevenue = unifiedCalcs.seo.potentialRevenue;
+      
+      socialCurrentRevenue = unifiedCalcs.social.currentRevenue;
+      socialPotentialRevenue = unifiedCalcs.social.potentialRevenue;
+      
+      smsCurrentRevenue = unifiedCalcs.sms.currentRevenue;
+      smsPotentialRevenue = unifiedCalcs.sms.potentialRevenue;
+    } else {
+      // Fallback to basic calculations
+      seoCurrentRevenue = monthlyRevenue * 0.1;
+      seoPotentialRevenue = channelROICalculators.calculateSEOROI(monthlyTransactions * 2.5, 5, 1, avgTicket) + seoCurrentRevenue;
+      
+      socialCurrentRevenue = monthlyRevenue * 0.05;
+      socialPotentialRevenue = socialCurrentRevenue + (monthlyTransactions * 0.15 * avgTicket);
+      
+      smsCurrentRevenue = 0;
+      smsPotentialRevenue = channelROICalculators.calculateSMSROI(monthlyTransactions * 0.3, 4, avgTicket);
+    }
+
+    return [
+      {
+        id: 'seo',
+        name: 'SEO & Local Search',
+        isActive: false,
+        currentRevenue: seoCurrentRevenue,
+        potentialRevenue: seoPotentialRevenue,
+        color: '#4CAF50',
+        icon: '🔍',
+        methodology: 'Based on Local Pack vs Organic search attribution (70%/30% split) and position-specific CTR: Local Pack Position #1 (33% CTR), #2 (22% CTR), #3 (13% CTR). Organic Search Position #1 (18% CTR), #2 (7% CTR), #3 (3% CTR). Uses 5% website conversion rate and 2.5x search volume multiplier.',
+        dataSource: 'Google Local Search Study 2024, Local SEO Click-Through Rate Analysis, Restaurant Industry Benchmarks'
+      },
+      {
+        id: 'social',
+        name: 'Social Media Marketing',
+        isActive: false,
+        currentRevenue: socialCurrentRevenue,
+        potentialRevenue: socialPotentialRevenue,
+        color: '#E91E63',
+        icon: '📱',
+        methodology: 'Calculated using realistic follower-to-customer conversion rates, with Instagram performing at 1.5% monthly conversion and Facebook at 0.5%. Accounts for posting frequency impact and content strategy optimization.',
+        dataSource: 'Restaurant Social Media Report 2024, Platform-specific engagement studies, Food & Beverage industry analysis'
+      },
+      {
+        id: 'sms',
+        name: 'SMS Marketing',
+        isActive: false,
+        currentRevenue: smsCurrentRevenue,
+        potentialRevenue: smsPotentialRevenue,
+        color: '#2196F3',
+        icon: '💬',
+        methodology: 'Based on 98% SMS open rate (highest in F&B sector), 19-20% click-through rate, and 25% conversion rate. Assumes 30% of customers would opt-in to SMS marketing with 4 campaigns per month. 10x higher redemption vs other channels.',
+        dataSource: 'SMS Marketing Benchmark Report, Mobile Marketing Association F&B data, Redemption rate studies'
+      }
+    ];
+  }, [monthlyRevenue, avgTicket, monthlyTransactions, restaurantData]);
+
+  // Combine calculations with toggle states
+  const levers = useMemo(() => {
+    return leverCalculations.map(lever => ({
+      ...lever,
+      isActive: leverStates[lever.id] || false
+    }));
+  }, [leverCalculations, leverStates]);
+
+  // Calculate attribution for both current and optimized scenarios
+  const calculateAttribution = (isOptimized: boolean = false): AttributionData[] => {
+    const attribution: AttributionData[] = [];
+    let baseRevenue = monthlyRevenue;
+    
+    // Add optimized revenue from active levers + overall business growth
+    if (isOptimized) {
+      const additionalRevenue = levers.reduce((sum, lever) => {
+        if (lever.isActive) {
+          return sum + (lever.potentialRevenue - lever.currentRevenue);
+        }
+        return sum;
+      }, 0);
+      
+      // Overall business growth multiplier (better marketing lifts all boats)
+      const businessGrowthMultiplier = 1.15; // +15% baseline growth from better marketing
+      baseRevenue = (monthlyRevenue + additionalRevenue) * businessGrowthMultiplier;
+    }
+    
+    // Third-Party Delivery
+    let thirdPartyRevenue = 0;
+    if (thirdPartyPercentage > 0) {
+      thirdPartyRevenue = baseRevenue * (thirdPartyPercentage / 100);
+      attribution.push({
+        channel: 'Third-Party Delivery',
+        revenue: thirdPartyRevenue,
+        percentage: thirdPartyPercentage,
+        color: '#FF6B6B',
+        details: `Commission: 15-30% per order`
+      });
+    }
+    
+    // SEO Revenue - enhanced with lever state
+    const seoLever = levers.find(l => l.id === 'seo');
+    const seoRevenue = isOptimized && seoLever?.isActive ? seoLever.potentialRevenue : (currentSEORevenue || seoLever?.currentRevenue || baseRevenue * 0.1);
+    attribution.push({
+      channel: 'SEO & Local Search',
+      revenue: seoRevenue,
+      percentage: (seoRevenue / baseRevenue) * 100,
+      color: '#4CAF50',
+      details: isOptimized && seoLever?.isActive ? 'Optimized with Boostly' : 'Current performance'
+    });
+    
+    // Social Media - enhanced with lever state
+    const socialLever = levers.find(l => l.id === 'social');
+    const socialRevenue = isOptimized && socialLever?.isActive ? socialLever.potentialRevenue : (socialLever?.currentRevenue || baseRevenue * 0.05);
+    if (socialRevenue > 0) {
+      attribution.push({
+        channel: 'Social Media',
+        revenue: socialRevenue,
+        percentage: (socialRevenue / baseRevenue) * 100,
+        color: '#E91E63',
+        details: isOptimized && socialLever?.isActive ? 'Optimized strategy' : 'Current social presence'
+      });
+    }
+    
+    // SMS Marketing - enhanced with lever state
+    const smsLever = levers.find(l => l.id === 'sms');
+    const smsRevenue = isOptimized && smsLever?.isActive ? smsLever.potentialRevenue : (smsLever?.currentRevenue || 0);
+    if (smsRevenue > 0) {
+      attribution.push({
+        channel: 'SMS Marketing',
+        revenue: smsRevenue,
+        percentage: (smsRevenue / baseRevenue) * 100,
+        color: '#2196F3',
+        details: '98% open rate, 19.5% CTR'
+      });
+    }
+    
+    // Email Marketing
+    if (emailListSize > 0) {
+      const emailRevenue = (emailListSize * 0.284 * 0.042 * avgTicket * 0.3);
+      attribution.push({
+        channel: 'Email Marketing',
+        revenue: emailRevenue,
+        percentage: (emailRevenue / baseRevenue) * 100,
+        color: '#A8E6CF',
+        details: '28.4% open rate, 4.2% CTR'
+      });
+    }
+    
+    // Loyalty Program
+    if (hasLoyaltyProgram) {
+      const loyaltyRevenue = baseRevenue * 0.15;
+      attribution.push({
+        channel: 'Loyalty Program',
+        revenue: loyaltyRevenue,
+        percentage: (loyaltyRevenue / baseRevenue) * 100,
+        color: '#FFD93D',
+        details: '20% higher spend, 20% more visits'
+      });
+    }
+    
+    // Direct/Walk-in (remaining revenue)
+    const otherChannelsRevenue = attribution.reduce((sum, item) => 
+      item.channel !== 'Third-Party Delivery' ? sum + item.revenue : sum, 0);
+    const directRevenue = Math.max(0, baseRevenue - thirdPartyRevenue - otherChannelsRevenue);
+    
+    if (directRevenue > 0) {
+      attribution.push({
+        channel: 'Direct/Walk-in',
+        revenue: directRevenue,
+        percentage: (directRevenue / baseRevenue) * 100,
+        color: '#2E7D32',
+        details: 'Repeat customers, walk-ins, direct traffic'
+      });
+    }
+    
+    return attribution.sort((a, b) => b.revenue - a.revenue);
+  };
+
+  // D3 Chart rendering function
+  const renderChart = (svgRef: React.RefObject<SVGSVGElement>, data: AttributionData[], isOptimized: boolean = false) => {
+    if (!svgRef.current) return;
+
+    const svg = d3.select(svgRef.current);
+    svg.selectAll('*').remove();
+
+    const width = isOptimized ? 650 : 480; // Optimized chart even larger for maximum impact
+    const height = isOptimized ? 550 : 400;
+    const radius = Math.min(width, height) / 2 - 40;
+
+    const g = svg
+      .append('g')
+      .attr('transform', `translate(${width / 2}, ${height / 2})`);
+
+    const pie = d3.pie<AttributionData>()
+      .value(d => d.revenue)
+      .sort(null);
+
+    const arc = d3.arc<d3.PieArcDatum<AttributionData>>()
+      .innerRadius(radius * 0.5)
+      .outerRadius(radius);
+
+    const hoverArc = d3.arc<d3.PieArcDatum<AttributionData>>()
+      .innerRadius(radius * 0.5)
+      .outerRadius(radius * 1.05);
+
+    // Add glow effect for optimized chart
+    if (isOptimized) {
+      const defs = svg.append('defs');
+      const filter = defs.append('filter')
+        .attr('id', 'glow')
+        .attr('x', '-50%')
+        .attr('y', '-50%')
+        .attr('width', '200%')
+        .attr('height', '200%');
+
+      filter.append('feGaussianBlur')
+        .attr('stdDeviation', '4')
+        .attr('result', 'coloredBlur');
+
+      const feMerge = filter.append('feMerge');
+      feMerge.append('feMergeNode').attr('in', 'coloredBlur');
+      feMerge.append('feMergeNode').attr('in', 'SourceGraphic');
+    }
+
+    // Draw pie segments
+    const segments = g.selectAll('.arc')
+      .data(pie(data))
+      .enter().append('g')
+      .attr('class', 'arc');
+
+    segments.append('path')
+      .attr('d', arc)
+      .attr('fill', d => d.data.color)
+      .style('stroke', isOptimized ? '#FFD700' : 'white')
+      .style('stroke-width', isOptimized ? 3 : 2)
+      .style('cursor', 'pointer')
+      .style('filter', isOptimized ? 'url(#glow)' : 'none')
+      .on('mouseover', function(_, d) {
+        d3.select(this)
+          .transition()
+          .duration(200)
+          .attr('d', hoverArc(d));
+        setHoveredSegment(d.data.channel);
+      })
+      .on('mouseout', function(_, d) {
+        d3.select(this)
+          .transition()
+          .duration(200)
+          .attr('d', arc(d));
+        setHoveredSegment(null);
+      });
+
+    // Add percentage labels
+    segments.append('text')
+      .attr('transform', d => `translate(${arc.centroid(d)})`)
+      .attr('text-anchor', 'middle')
+      .style('fill', 'white')
+      .style('font-weight', 'bold')
+      .style('font-size', isOptimized ? '13px' : '12px')
+      .style('pointer-events', 'none')
+      .text(d => d.data.percentage > 5 ? `${d.data.percentage.toFixed(0)}%` : '');
+
+    // Center text
+    const totalRevenue = data.reduce((sum, d) => sum + d.revenue, 0);
+    
+    g.append('text')
+      .attr('text-anchor', 'middle')
+      .attr('dy', '-0.5em')
+      .style('font-size', isOptimized ? '28px' : '24px')
+      .style('font-weight', 'bold')
+      .style('fill', isOptimized ? '#FFD700' : '#333')
+      .text(`$${Math.round(totalRevenue).toLocaleString()}`);
+
+    g.append('text')
+      .attr('text-anchor', 'middle')
+      .attr('dy', '1em')
+      .style('font-size', '14px')
+      .style('fill', '#666')
+      .text('Monthly Revenue');
+
+  };
+
+  useEffect(() => {
+    const currentData = calculateAttribution(false);
+    const optimizedData = calculateAttribution(true);
+    
+    renderChart(currentChartRef, currentData, false);
+    renderChart(optimizedChartRef, optimizedData, true);
+  }, [monthlyRevenue, avgTicket, hasLoyaltyProgram, smsListSize, emailListSize, 
+      socialFollowers, thirdPartyPercentage, currentSEORevenue, leverStates, levers]);
+
+  const currentData = calculateAttribution(false);
+  const optimizedData = calculateAttribution(true);
+  const totalOptimizedRevenue = optimizedData.reduce((sum, d) => sum + d.revenue, 0);
+  const growthPotential = totalOptimizedRevenue - monthlyRevenue;
+  const growthPercentage = (growthPotential / monthlyRevenue) * 100;
+
+  return (
+    <div style={{ fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif" }}>
+      {/* Header */}
+      <div style={{ textAlign: 'center', marginBottom: '40px' }}>
+        <h2 style={{
+          fontSize: '2.5rem',
+          fontWeight: '800',
+          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          WebkitBackgroundClip: 'text',
+          WebkitTextFillColor: 'transparent',
+          backgroundClip: 'text',
+          marginBottom: '10px'
+        }}>
+          💰 Your Revenue DNA
+        </h2>
+        <p style={{
+          fontSize: '18px',
+          color: '#666',
+          marginBottom: '10px'
+        }}>
+          Current Reality vs. Optimized Potential
+        </p>
+        <p style={{
+          fontSize: '24px',
+          fontWeight: '700',
+          color: '#10b981',
+          margin: 0
+        }}>
+          Unlock ${Math.round(growthPotential).toLocaleString()} ({growthPercentage.toFixed(0)}% growth)
+        </p>
+      </div>
+
+      {/* Interactive Levers */}
+      <div style={{
+        marginBottom: '40px',
+        background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
+        borderRadius: '16px',
+        padding: '30px',
+        border: '1px solid #e2e8f0'
+      }}>
+        <h3 style={{
+          fontSize: '1.8rem',
+          fontWeight: '700',
+          color: '#334155',
+          marginBottom: '20px',
+          textAlign: 'center'
+        }}>
+          ⚡ Interactive Revenue Levers
+        </h3>
+        <p style={{
+          fontSize: '16px',
+          color: '#64748b',
+          textAlign: 'center',
+          marginBottom: '30px'
+        }}>
+          Toggle the levers below to see real-time impact on your revenue potential
+        </p>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '40px' }}>
+          {levers.map((lever) => (
+            <div key={lever.id} style={{ textAlign: 'center', position: 'relative' }}>
+              {/* Lever Name */}
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginBottom: '20px'
+              }}>
+                <span style={{ fontSize: '2rem', marginRight: '10px' }}>{lever.icon}</span>
+                <h3 style={{
+                  fontSize: '1.2rem',
+                  fontWeight: '700',
+                  color: '#333',
+                  margin: '0'
+                }}>
+                  {lever.name}
+                </h3>
+              </div>
+
+              {/* Lever Switch */}
+              <div 
+                style={{
+                  position: 'relative',
+                  width: '60px',
+                  height: '160px',
+                  background: '#f0f0f0',
+                  borderRadius: '30px',
+                  margin: '0 auto 20px auto',
+                  cursor: 'pointer',
+                  border: '3px solid #ddd',
+                  transition: 'all 0.3s ease'
+                }}
+                onClick={() => setLeverStates(prev => ({ ...prev, [lever.id]: !prev[lever.id] }))}
+              >
+                {/* Lever Track */}
+                <div style={{
+                  position: 'absolute',
+                  top: '6px',
+                  left: '6px',
+                  width: 'calc(100% - 12px)',
+                  height: 'calc(100% - 12px)',
+                  background: lever.isActive ? `linear-gradient(to top, ${lever.color}, ${lever.color}dd)` : '#e0e0e0',
+                  borderRadius: '24px',
+                  transition: 'all 0.4s ease'
+                }} />
+
+                {/* Lever Handle */}
+                <div style={{
+                  position: 'absolute',
+                  top: lever.isActive ? '10px' : 'calc(100% - 50px)', // UP when active, DOWN when inactive
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  width: '70px',
+                  height: '40px',
+                  background: 'white',
+                  borderRadius: '20px',
+                  border: `3px solid ${lever.isActive ? lever.color : '#999'}`,
+                  boxShadow: lever.isActive ? `0 6px 15px ${lever.color}40` : '0 6px 15px rgba(0,0,0,0.15)',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '12px',
+                  fontWeight: '800',
+                  color: lever.isActive ? lever.color : '#999',
+                  transition: 'all 0.4s ease',
+                  zIndex: 2
+                }}>
+                  {lever.isActive ? 'ON' : 'OFF'}
+                </div>
+              </div>
+
+              {/* Status Display */}
+              <div style={{
+                textAlign: 'center',
+                marginBottom: '15px'
+              }}>
+                <div style={{
+                  fontSize: '14px',
+                  fontWeight: '700',
+                  color: lever.isActive ? lever.color : '#999',
+                  padding: '8px 16px',
+                  background: lever.isActive ? `${lever.color}20` : '#f5f5f5',
+                  borderRadius: '20px',
+                  border: `2px solid ${lever.isActive ? lever.color : '#ddd'}`,
+                  transition: 'all 0.3s ease'
+                }}>
+                  {lever.isActive ? '✓ WITH BOOSTLY' : '✗ WITHOUT BOOSTLY'}
+                </div>
+              </div>
+
+              {/* Revenue Impact */}
+              <div style={{
+                background: '#f8f9fa',
+                padding: '20px',
+                borderRadius: '15px',
+                border: '2px solid #e9ecef'
+              }}>
+                <div style={{
+                  fontSize: '20px',
+                  fontWeight: '700',
+                  color: lever.isActive ? lever.color : '#666',
+                  marginBottom: '5px'
+                }}>
+                  +${Math.round(lever.potentialRevenue - lever.currentRevenue).toLocaleString()}
+                </div>
+                <div style={{
+                  fontSize: '12px',
+                  color: '#666'
+                }}>
+                  monthly revenue boost
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Dual Charts */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: '1fr 1fr',
+        gap: '40px',
+        marginBottom: '40px'
+      }}>
+        {/* Current Revenue Chart */}
+        <div style={{
+          background: 'white',
+          borderRadius: '16px',
+          padding: '30px',
+          boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
+          textAlign: 'center',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center'
+        }}>
+          <h3 style={{
+            fontSize: '1.5rem',
+            fontWeight: '700',
+            color: '#334155',
+            marginBottom: '20px'
+          }}>
+            Current Revenue DNA
+          </h3>
+          <div style={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
+            <svg ref={currentChartRef} width={480} height={400}></svg>
+          </div>
+        </div>
+
+        {/* Optimized Revenue Chart - Premium Treatment */}
+        <div style={{
+          background: 'linear-gradient(135deg, #fff7ed 0%, #fef3c7 100%)',
+          borderRadius: '16px',
+          padding: '30px',
+          boxShadow: '0 8px 30px rgba(255,215,0,0.3)',
+          border: '2px solid #FFD700',
+          textAlign: 'center',
+          position: 'relative',
+          overflow: 'hidden',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center'
+        }}>
+          {/* Background glow effect */}
+          <div style={{
+            position: 'absolute',
+            top: '-50%',
+            left: '-50%',
+            width: '200%',
+            height: '200%',
+            background: 'radial-gradient(circle, rgba(255,215,0,0.1) 0%, transparent 70%)',
+            animation: 'pulse 3s ease-in-out infinite',
+            pointerEvents: 'none'
+          }} />
+          
+          <div style={{ 
+            position: 'relative', 
+            zIndex: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center'
+          }}>
+            <h3 style={{
+              fontSize: '1.8rem',
+              fontWeight: '700',
+              background: 'linear-gradient(135deg, #b45309 0%, #92400e 100%)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              backgroundClip: 'text',
+              marginBottom: '20px'
+            }}>
+              Optimized Revenue DNA
+            </h3>
+            <div style={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
+              <svg ref={optimizedChartRef} width={650} height={550}></svg>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Channel Breakdown Panels */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: '1fr 1fr',
+        gap: '40px'
+      }}>
+        {/* Current Breakdown */}
+        <div>
+          <h3 style={{
+            fontSize: '1.4rem',
+            fontWeight: '700',
+            marginBottom: '20px',
+            color: '#334155'
+          }}>
+            📊 Current Channel Breakdown
+          </h3>
+          {currentData.map((item) => (
+            <div 
+              key={item.channel}
+              style={{ 
+                marginBottom: '12px',
+                padding: '15px',
+                backgroundColor: hoveredSegment === item.channel ? '#e8f4f8' : 'white',
+                borderRadius: '8px',
+                border: '1px solid #e2e8f0',
+                transition: 'all 0.2s'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
+                <div 
+                  style={{ 
+                    width: '12px', 
+                    height: '12px', 
+                    backgroundColor: item.color,
+                    borderRadius: '2px',
+                    marginRight: '10px'
+                  }}
+                />
+                <span style={{ fontWeight: '700', flex: 1, fontSize: '14px' }}>{item.channel}</span>
+                <span style={{ fontWeight: '700', fontSize: '16px' }}>${Math.round(item.revenue).toLocaleString()}</span>
+              </div>
+              {item.details && (
+                <div style={{ fontSize: '12px', color: '#64748b', marginLeft: '22px' }}>
+                  {item.details}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+
+        {/* Optimized Breakdown */}
+        <div>
+          <h3 style={{
+            fontSize: '1.4rem',
+            fontWeight: '700',
+            marginBottom: '20px',
+            background: 'linear-gradient(135deg, #b45309 0%, #92400e 100%)',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            backgroundClip: 'text'
+          }}>
+            🚀 Optimized Channel Breakdown
+          </h3>
+          {optimizedData.map((item) => (
+            <div 
+              key={item.channel}
+              style={{ 
+                marginBottom: '12px',
+                padding: '15px',
+                backgroundColor: hoveredSegment === item.channel ? '#fef3c7' : 'rgba(255,255,255,0.8)',
+                borderRadius: '8px',
+                border: '1px solid #fbbf24',
+                transition: 'all 0.2s'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
+                <div 
+                  style={{ 
+                    width: '12px', 
+                    height: '12px', 
+                    backgroundColor: item.color,
+                    borderRadius: '2px',
+                    marginRight: '10px'
+                  }}
+                />
+                <span style={{ fontWeight: '700', flex: 1, fontSize: '14px' }}>{item.channel}</span>
+                <span style={{ fontWeight: '700', fontSize: '16px' }}>${Math.round(item.revenue).toLocaleString()}</span>
+              </div>
+              {item.details && (
+                <div style={{ fontSize: '12px', color: '#92400e', marginLeft: '22px' }}>
+                  {item.details}
+                </div>
+              )}
+            </div>
+          ))}
+          
+          {/* Growth Summary */}
+          <div style={{
+            marginTop: '20px',
+            padding: '20px',
+            background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+            borderRadius: '8px',
+            color: 'white'
+          }}>
+            <h4 style={{ margin: '0 0 10px 0', fontSize: '16px', fontWeight: '700' }}>
+              💎 Revenue Growth Summary
+            </h4>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+              <span>Additional Monthly Revenue:</span>
+              <span style={{ fontWeight: '700' }}>+${Math.round(growthPotential).toLocaleString()}</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+              <span>Growth Percentage:</span>
+              <span style={{ fontWeight: '700' }}>{growthPercentage.toFixed(1)}%</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span>Annual Revenue Impact:</span>
+              <span style={{ fontWeight: '700' }}>${Math.round(growthPotential * 12).toLocaleString()}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* CSS Animation for pulse effect */}
+      <style>{`
+        @keyframes pulse {
+          0%, 100% { opacity: 0.3; }
+          50% { opacity: 0.6; }
+        }
+      `}</style>
+    </div>
+  );
+};
+
+export default DualRevenueVisualization;

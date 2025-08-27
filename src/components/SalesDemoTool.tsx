@@ -9,6 +9,7 @@ import { fetchFacebookMetrics } from '../services/facebookScraper';
 import EnhancedFloatingBubbles from './EnhancedFloatingBubbles';
 import RevenueLeverSystem from './RevenueLeverSystem';
 import RevenueAttribution from './RevenueAttribution';
+import DualRevenueVisualization from './DualRevenueVisualization';
 import ComprehensiveMetrics from './ComprehensiveMetrics';
 import RestaurantSearch from './RestaurantSearch';
 
@@ -1772,7 +1773,7 @@ const SalesDemoTool: React.FC = () => {
     );
   }
 
-  // Step 4: Revenue Dashboard
+  // Step 4: Revenue Dashboard - Enhanced with Dual Visualization
   if (step === 4) {
     return (
       <div style={{ 
@@ -1781,727 +1782,156 @@ const SalesDemoTool: React.FC = () => {
         padding: '40px 20px',
         fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif"
       }}>
-      <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-        {/* Section 1: Revenue DNA */}
-        <div style={{
-          background: 'white',
-          borderRadius: '20px',
-          padding: '40px',
-          marginBottom: '30px',
-          boxShadow: '0 20px 60px rgba(0,0,0,0.15)'
-        }}>
-          <h2 style={{
-            fontSize: '2.2rem',
-            fontWeight: '700',
-            color: '#333',
-            marginBottom: '10px',
-            textAlign: 'center'
+        <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
+          {/* Main Dual Revenue Visualization */}
+          <div style={{
+            background: 'white',
+            borderRadius: '20px',
+            padding: '40px',
+            marginBottom: '30px',
+            boxShadow: '0 20px 60px rgba(0,0,0,0.15)'
           }}>
-            💰 Your Revenue DNA
-          </h2>
-          <p style={{
-            fontSize: '16px',
-            color: '#666',
-            textAlign: 'center',
-            marginBottom: '25px'
-          }}>
-            Every dollar tells a story. Here's yours.
-          </p>
-          <RevenueAttribution
-            monthlyRevenue={data.monthlyRevenue}
-            avgTicket={data.avgTicket}
-            localPackPosition={data.currentLocalPackPosition}
-            organicPosition={data.currentOrganicPosition}
-            localPackKeywords={data.localPackKeywords}
-            organicKeywords={data.organicKeywords}
-            hasLoyaltyProgram={false}
-            smsListSize={data.smsListSize}
-            emailListSize={data.emailListSize}
-            socialFollowers={data.socialFollowersInstagram + data.socialFollowersFacebook}
-            thirdPartyPercentage={data.usesThirdPartyDelivery ? data.thirdPartyPercentage : 0}
-            currentSEORevenue={((data.keywords && Array.isArray(data.keywords)) ? data.keywords.reduce((total, keyword) => {
-              // Add comprehensive null checks
-              if (!keyword || typeof keyword !== 'object') return total;
-              
-              const currentPosition = Number(keyword.currentPosition) || 5;
-              const searchVolume = Number(keyword.searchVolume) || 0;
-              const avgTicketCalc = Number(data.avgTicket) || 45;
-              
-              // Skip if no search volume
-              if (searchVolume <= 0) return total;
-              
-              const getCTR = (position: number) => {
-                const ctrRates = { 1: 0.25, 2: 0.18, 3: 0.12, 4: 0.08, 5: 0.05, 6: 0.03, 7: 0.02, 8: 0.01, 9: 0.01, 10: 0.01 };
-                return ctrRates[position as keyof typeof ctrRates] || 0.005;
-              };
-              
-              // Include 25% conversion rate (clicks to actual orders)
-              const conversionRate = 0.25;
-              const currentRevenue = Math.floor(searchVolume * getCTR(currentPosition) * conversionRate * avgTicketCalc) || 0;
-              return total + currentRevenue;
-            }, 0) : 0)}
-          />
-        </div>
-
-        {/* Section 2: Your Million Dollar Moment */}
-        <div style={{
-          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-          borderRadius: '20px',
-          padding: '40px',
-          marginBottom: '30px',
-          boxShadow: '0 20px 60px rgba(0,0,0,0.15)',
-          textAlign: 'center',
-          color: 'white'
-        }}>
-          <h2 style={{
-            fontSize: '2.5rem',
-            fontWeight: '700',
-            marginBottom: '30px'
-          }}>
-            💎 Your Million Dollar Moment
-          </h2>
-          
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '30px' }}>
-            <div style={{
-              background: 'rgba(255, 255, 255, 0.2)',
-              padding: '20px',
-              borderRadius: '15px',
-              backdropFilter: 'blur(10px)'
-            }}>
-              <p style={{ fontSize: '14px', marginBottom: '10px', opacity: 0.9 }}>Current Monthly Revenue</p>
-              <p style={{ fontSize: '2.5rem', fontWeight: '700', margin: '0' }}>
-                ${data.monthlyRevenue.toLocaleString()}
-              </p>
-            </div>
-            <div style={{
-              background: 'rgba(255, 255, 255, 0.2)',
-              padding: '20px',
-              borderRadius: '15px',
-              backdropFilter: 'blur(10px)'
-            }}>
-              <p style={{ fontSize: '14px', marginBottom: '10px', opacity: 0.9 }}>Potential Additional Revenue</p>
-              <p style={{ fontSize: '2.5rem', fontWeight: '700', margin: '0' }}>
-                +${Math.round(totalGap).toLocaleString()}
-              </p>
-            </div>
-            <div style={{
-              background: 'rgba(255, 255, 255, 0.2)',
-              padding: '20px',
-              borderRadius: '15px',
-              backdropFilter: 'blur(10px)'
-            }}>
-              <p style={{ fontSize: '14px', marginBottom: '10px', opacity: 0.9 }}>Revenue Growth Potential</p>
-              <p style={{ fontSize: '2.5rem', fontWeight: '700', margin: '0' }}>
-                {Math.round((totalGap / data.monthlyRevenue) * 100)}%
-              </p>
-            </div>
-          </div>
-
-        </div>
-
-        {/* Section 3: Your Hidden Revenue Levers */}
-        <div style={{
-          background: 'white',
-          borderRadius: '20px',
-          padding: '40px',
-          marginBottom: '30px',
-          boxShadow: '0 20px 60px rgba(0,0,0,0.15)'
-        }}>
-          <h2 style={{
-            fontSize: '2.2rem',
-            fontWeight: '700',
-            color: '#333',
-            marginBottom: '10px',
-            textAlign: 'center'
-          }}>
-            ⚡ Your Hidden Revenue Levers
-          </h2>
-          <p style={{
-            fontSize: '16px',
-            color: '#666',
-            textAlign: 'center',
-            marginBottom: '25px'
-          }}>
-            Pull the right levers. Watch your revenue transform.
-          </p>
-          <RevenueLeverSystem 
-            monthlyRevenue={data.monthlyRevenue}
-            avgTicket={data.avgTicket}
-            monthlyTransactions={Math.round(data.monthlyRevenue / data.avgTicket)}
-            restaurantData={{
-              monthlyRevenue: data.monthlyRevenue,
-              avgTicket: data.avgTicket,
-              monthlyTransactions: Math.round(data.monthlyRevenue / data.avgTicket),
-              keywords: data.keywords,
-              currentLocalPackPosition: data.currentLocalPackPosition,
-              currentOrganicPosition: data.currentOrganicPosition,
-              socialFollowersInstagram: data.socialFollowersInstagram,
-              socialFollowersFacebook: data.socialFollowersFacebook,
-              emailListSize: data.emailListSize,
-              smsListSize: data.smsListSize,
-              localPackKeywords: data.localPackKeywords,
-              // Pass enhanced social media metrics
-              instagramMetrics: data.instagramMetrics,
-              facebookMetrics: data.facebookMetrics,
-              organicKeywords: data.organicKeywords
-            }}
-          />
-          
-          {/* Keywords Section - Show current rankings */}
-          {true && (
-            <div style={{
-              marginTop: '40px',
-              background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
-              borderRadius: '16px',
-              padding: '30px',
-              border: '1px solid #e2e8f0'
-            }}>
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                marginBottom: '20px'
-              }}>
-                <span style={{ fontSize: '24px', marginRight: '12px' }}>🎯</span>
-                <h3 style={{
-                  fontSize: '1.4rem',
-                  fontWeight: '700',
-                  color: '#334155',
-                  margin: 0
-                }}>
-                  Your Current Keyword Rankings
-                </h3>
-              </div>
-              
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: '1.8fr 80px 70px 90px 140px',
-                gap: '12px',
-                alignItems: 'center',
-                marginBottom: '16px',
-                padding: '12px 16px',
-                backgroundColor: '#334155',
-                borderRadius: '8px',
-                fontSize: '12px',
-                fontWeight: '600',
-                color: 'white',
-                textTransform: 'uppercase',
-                letterSpacing: '0.5px'
-              }}>
-                <div>Keyword</div>
-                <div style={{ textAlign: 'center' }}>Position</div>
-                <div style={{ textAlign: 'center' }}>Volume</div>
-                <div style={{ textAlign: 'center' }}>Type</div>
-                <div style={{ textAlign: 'center' }}>Revenue Impact</div>
-              </div>
-              
-              
-              {((data.keywords && data.keywords.length > 0) ? data.keywords : [
-                { keyword: "pizza california", searchVolume: 3600, currentPosition: 4, isLocalPack: false },
-                { keyword: "pizza ca", searchVolume: 390, currentPosition: 1, isLocalPack: true }
-              ])
-                .map(keyword => {
-                  // Add comprehensive null checks
-                  if (!keyword || typeof keyword !== 'object') {
-                    return { 
-                      keyword: { keyword: 'Unknown', searchVolume: 0, currentPosition: 5, isLocalPack: false }, 
-                      revenueImpact: { targetPosition: 3, currentMonthlyRevenue: 0, targetMonthlyRevenue: 0, improvementRevenue: 0 } 
-                    };
-                  }
-                  
-                  // Calculate current and potential revenue with proper fallbacks
-                  const currentPosition = Number(keyword.currentPosition) || 5;
-                  const targetPosition = Math.max(1, currentPosition - 2);
-                  const searchVolume = Number(keyword.searchVolume) || 0;
-                  const avgTicket = Number(data.avgTicket) || 45;
-                  
-                  // Industry CTR rates by position
-                  const getCurrentCTR = (position: number) => {
-                    const ctrRates = { 1: 0.25, 2: 0.18, 3: 0.12, 4: 0.08, 5: 0.05, 6: 0.03, 7: 0.02, 8: 0.01, 9: 0.01, 10: 0.01 };
-                    return ctrRates[position as keyof typeof ctrRates] || 0.005;
-                  };
-                  
-                  const currentCTR = getCurrentCTR(currentPosition);
-                  const targetCTR = getCurrentCTR(targetPosition);
-                  
-                  // Include 25% conversion rate (clicks to actual orders)
-                  const conversionRate = 0.25;
-                  const currentMonthlyRevenue = Math.floor(searchVolume * currentCTR * conversionRate * avgTicket) || 0;
-                  const targetMonthlyRevenue = Math.floor(searchVolume * targetCTR * conversionRate * avgTicket) || 0;
-                  const improvementRevenue = Math.max(0, targetMonthlyRevenue - currentMonthlyRevenue) || 0;
-                  
-                  return { 
-                    keyword, 
-                    revenueImpact: { 
-                      targetPosition,
-                      currentMonthlyRevenue,
-                      targetMonthlyRevenue,
-                      improvementRevenue
-                    } 
-                  };
-                })
-                .sort((a, b) => b.revenueImpact.improvementRevenue - a.revenueImpact.improvementRevenue)
-                .map(({ keyword, revenueImpact }, index) => {
-                return (
-                  <div key={index} style={{
-                    display: 'grid',
-                    gridTemplateColumns: '1.8fr 80px 70px 90px 140px',
-                    gap: '12px',
-                    alignItems: 'center',
-                    padding: '16px',
-                    backgroundColor: 'white',
-                    borderRadius: '8px',
-                    marginBottom: '8px',
-                    border: '1px solid #e2e8f0',
-                    boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
-                  }}>
-                    <div style={{
-                      fontSize: '14px',
-                      fontWeight: '600',
-                      color: '#334155'
-                    }}>
-                      {keyword.keyword}
-                    </div>
-                    
-                    <div style={{
-                      textAlign: 'center',
-                      fontSize: '16px',
-                      fontWeight: '700',
-                      color: keyword.currentPosition <= 3 ? '#10b981' : keyword.currentPosition <= 10 ? '#f59e0b' : '#ef4444'
-                    }}>
-                      #{keyword.currentPosition}
-                    </div>
-                    
-                    <div style={{
-                      textAlign: 'center',
-                      fontSize: '12px',
-                      color: '#64748b'
-                    }}>
-                      {keyword.searchVolume.toLocaleString()}
-                    </div>
-                    
-                    <div style={{
-                      textAlign: 'center'
-                    }}>
-                      <span style={{
-                        padding: '4px 8px',
-                        borderRadius: '12px',
-                        fontSize: '10px',
-                        fontWeight: '600',
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.3px',
-                        background: keyword.isLocalPack ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)' : 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
-                        color: 'white'
-                      }}>
-                        {keyword.isLocalPack ? 'Local' : 'Organic'}
-                      </span>
-                    </div>
-                    
-                    <div style={{
-                      textAlign: 'center',
-                      fontSize: '11px'
-                    }}>
-                      <div style={{ 
-                        color: '#64748b', 
-                        marginBottom: '2px',
-                        fontSize: '10px'
-                      }}>
-                        #{keyword.currentPosition} → #{revenueImpact.targetPosition}
-                      </div>
-                      <div style={{
-                        fontSize: '10px',
-                        color: '#64748b',
-                        marginBottom: '2px'
-                      }}>
-                        Current: ${revenueImpact.currentMonthlyRevenue.toLocaleString()}
-                      </div>
-                      <div style={{
-                        fontWeight: '700',
-                        color: '#10b981',
-                        fontSize: '12px'
-                      }}>
-                        +${revenueImpact.improvementRevenue.toLocaleString()}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-              
-              <div style={{
-                marginTop: '20px',
-                display: 'grid',
-                gridTemplateColumns: '1fr 1fr',
-                gap: '16px'
-              }}>
-                <div style={{
-                  padding: '16px',
-                  background: 'linear-gradient(135deg, #1f2937 0%, #111827 100%)',
-                  borderRadius: '8px',
-                  border: '1px solid #374151'
-                }}>
-                  <div style={{
-                    textAlign: 'center',
-                    color: 'white'
-                  }}>
-                    <div style={{ fontSize: '14px', fontWeight: '600', marginBottom: '5px' }}>
-                      Current SEO Revenue
-                    </div>
-                    <div style={{ fontSize: '24px', fontWeight: '700', marginBottom: '3px' }}>
-                      ${((data.keywords && Array.isArray(data.keywords)) ? data.keywords.reduce((total, keyword) => {
-                        // Add comprehensive null checks
-                        if (!keyword || typeof keyword !== 'object') return total;
-                        
-                        const currentPosition = Number(keyword.currentPosition) || 5;
-                        const searchVolume = Number(keyword.searchVolume) || 0;
-                        const avgTicket = Number(data.avgTicket) || 45;
-                        
-                        // Skip if no search volume
-                        if (searchVolume <= 0) return total;
-                        
-                        const getCTR = (position: number) => {
-                          const ctrRates = { 1: 0.25, 2: 0.18, 3: 0.12, 4: 0.08, 5: 0.05, 6: 0.03, 7: 0.02, 8: 0.01, 9: 0.01, 10: 0.01 };
-                          return ctrRates[position as keyof typeof ctrRates] || 0.005;
-                        };
-                        
-                        // Include 25% conversion rate (clicks to actual orders)
-                        const conversionRate = 0.25;
-                        const currentRevenue = Math.floor(searchVolume * getCTR(currentPosition) * conversionRate * avgTicket) || 0;
-                        return total + currentRevenue;
-                      }, 0) : 0).toLocaleString()}/month
-                    </div>
-                    <div style={{ fontSize: '12px', opacity: 0.9 }}>
-                      You're already making this from SEO
-                    </div>
-                  </div>
-                </div>
+            <DualRevenueVisualization
+              monthlyRevenue={data.monthlyRevenue}
+              avgTicket={data.avgTicket}
+              monthlyTransactions={Math.round(data.monthlyRevenue / data.avgTicket)}
+              localPackPosition={data.currentLocalPackPosition}
+              organicPosition={data.currentOrganicPosition}
+              localPackKeywords={data.localPackKeywords}
+              organicKeywords={data.organicKeywords}
+              hasLoyaltyProgram={false}
+              smsListSize={data.smsListSize}
+              emailListSize={data.emailListSize}
+              socialFollowers={data.socialFollowersInstagram + data.socialFollowersFacebook}
+              thirdPartyPercentage={data.usesThirdPartyDelivery ? data.thirdPartyPercentage : 0}
+              currentSEORevenue={((data.keywords && Array.isArray(data.keywords)) ? data.keywords.reduce((total, keyword) => {
+                if (!keyword || typeof keyword !== 'object') return total;
                 
-                <div style={{
-                  padding: '16px',
-                  background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-                  borderRadius: '8px',
-                  border: '1px solid #059669'
-                }}>
-                  <div style={{
-                    textAlign: 'center',
-                    color: 'white'
-                  }}>
-                    <div style={{ fontSize: '14px', fontWeight: '600', marginBottom: '5px' }}>
-                      Additional Revenue Opportunity
-                    </div>
-                    <div style={{ fontSize: '24px', fontWeight: '700', marginBottom: '3px' }}>
-                      +${((data.keywords && Array.isArray(data.keywords)) ? data.keywords.reduce((total, keyword) => {
-                        // Add comprehensive null checks
-                        if (!keyword || typeof keyword !== 'object') return total;
-                        
-                        const currentPosition = Number(keyword.currentPosition) || 5;
-                        const targetPosition = Math.max(1, currentPosition - 2);
-                        const searchVolume = Number(keyword.searchVolume) || 0;
-                        const avgTicket = Number(data.avgTicket) || 45;
-                        
-                        // Skip if no search volume
-                        if (searchVolume <= 0) return total;
-                        
-                        const getCTR = (position: number) => {
-                          const ctrRates = { 1: 0.25, 2: 0.18, 3: 0.12, 4: 0.08, 5: 0.05, 6: 0.03, 7: 0.02, 8: 0.01, 9: 0.01, 10: 0.01 };
-                          return ctrRates[position as keyof typeof ctrRates] || 0.005;
-                        };
-                        
-                        // Include 25% conversion rate (clicks to actual orders)
-                        const conversionRate = 0.25;
-                        const currentRevenue = Math.floor(searchVolume * getCTR(currentPosition) * conversionRate * avgTicket) || 0;
-                        const targetRevenue = Math.floor(searchVolume * getCTR(targetPosition) * conversionRate * avgTicket) || 0;
-                        const improvement = Math.max(0, targetRevenue - currentRevenue) || 0;
-                        
-                        return total + improvement;
-                      }, 0) : 0).toLocaleString()}/month
-                    </div>
-                    <div style={{ fontSize: '12px', opacity: 0.9 }}>
-                      ${(((data.keywords && Array.isArray(data.keywords)) ? data.keywords.reduce((total, keyword) => {
-                        // Add comprehensive null checks
-                        if (!keyword || typeof keyword !== 'object') return total;
-                        
-                        const currentPosition = Number(keyword.currentPosition) || 5;
-                        const targetPosition = Math.max(1, currentPosition - 2);
-                        const searchVolume = Number(keyword.searchVolume) || 0;
-                        const avgTicket = Number(data.avgTicket) || 45;
-                        
-                        // Skip if no search volume
-                        if (searchVolume <= 0) return total;
-                        
-                        const getCTR = (position: number) => {
-                          const ctrRates = { 1: 0.25, 2: 0.18, 3: 0.12, 4: 0.08, 5: 0.05, 6: 0.03, 7: 0.02, 8: 0.01, 9: 0.01, 10: 0.01 };
-                          return ctrRates[position as keyof typeof ctrRates] || 0.005;
-                        };
-                        
-                        // Include 25% conversion rate (clicks to actual orders)
-                        const conversionRate = 0.25;
-                        const currentRevenue = Math.floor(searchVolume * getCTR(currentPosition) * conversionRate * avgTicket) || 0;
-                        const targetRevenue = Math.floor(searchVolume * getCTR(targetPosition) * conversionRate * avgTicket) || 0;
-                        const improvement = Math.max(0, targetRevenue - currentRevenue) || 0;
-                        
-                        return total + improvement;
-                      }, 0) : 0) * 12).toLocaleString()}/year with our optimization
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-
-
-        {/* Section 6: What Top Performers Know */}
-        <div style={{
-          background: 'white',
-          borderRadius: '20px',
-          padding: '40px',
-          marginBottom: '30px',
-          boxShadow: '0 20px 60px rgba(0,0,0,0.15)'
-        }}>
-          <h2 style={{
-            fontSize: '2.2rem',
-            fontWeight: '700',
-            color: '#333',
-            marginBottom: '10px',
-            textAlign: 'center'
-          }}>
-            🚀 What Top Performers Know
-          </h2>
-          <p style={{
-            fontSize: '16px',
-            color: '#666',
-            textAlign: 'center',
-            marginBottom: '25px'
-          }}>
-            Industry secrets that separate winners from everyone else.
-          </p>
-          <ComprehensiveMetrics />
-        </div>
-
-        {/* Section 7: How We Calculate Your Revenue Opportunities */}
-        <div style={{
-          background: 'white',
-          borderRadius: '20px',
-          padding: '40px',
-          marginBottom: '30px',
-          boxShadow: '0 20px 60px rgba(0,0,0,0.15)'
-        }}>
-          <h3 style={{
-            fontSize: '1.8rem',
-            fontWeight: '700',
-            color: '#333',
-            marginBottom: '20px',
-            textAlign: 'center'
-          }}>
-            📊 How We Calculate Your Revenue Opportunities
-          </h3>
-          
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: '1fr 1fr',
-            gap: '30px',
-            marginBottom: '30px'
-          }}>
-            <div style={{
-              background: '#f8f9fa',
-              padding: '25px',
-              borderRadius: '15px',
-              border: '2px solid #e9ecef'
-            }}>
-              <h4 style={{
-                fontSize: '1.2rem',
-                fontWeight: '700',
-                color: '#4CAF50',
-                marginBottom: '15px',
-                display: 'flex',
-                alignItems: 'center'
-              }}>
-                🔍 SEO & Local Search Attribution
-              </h4>
-              <p style={{
-                fontSize: '14px',
-                lineHeight: '1.5',
-                color: '#333',
-                margin: '0'
-              }}>
-                We use the industry-standard <strong>70% Local Pack / 30% Organic search</strong> traffic split. 
-                Position-specific CTR rates from Google studies: Local Pack #1 (33%), #2 (22%), #3 (13%). 
-                Organic #1 (18%), #2 (7%), #3 (3%). Applied to your estimated search volume with 5% conversion rate.
-              </p>
-            </div>
-
-            <div style={{
-              background: '#f8f9fa',
-              padding: '25px',
-              borderRadius: '15px',
-              border: '2px solid #e9ecef'
-            }}>
-              <h4 style={{
-                fontSize: '1.2rem',
-                fontWeight: '700',
-                color: '#2196F3',
-                marginBottom: '15px',
-                display: 'flex',
-                alignItems: 'center'
-              }}>
-                💬 SMS Marketing ROI
-              </h4>
-              <p style={{
-                fontSize: '14px',
-                lineHeight: '1.5',
-                color: '#333',
-                margin: '0'
-              }}>
-                Based on F&B industry's <strong>98% SMS open rate</strong> (highest of any channel), 19-20% CTR, 
-                and 25% conversion. Assumes 30% opt-in rate from your customer base. 
-                SMS delivers <strong>10x higher redemption</strong> than traditional coupons.
-              </p>
-            </div>
+                const currentPosition = Number(keyword.currentPosition) || 5;
+                const searchVolume = Number(keyword.searchVolume) || 0;
+                const avgTicketCalc = Number(data.avgTicket) || 45;
+                
+                if (searchVolume <= 0) return total;
+                
+                const getCTR = (position: number) => {
+                  const ctrRates = { 1: 0.25, 2: 0.18, 3: 0.12, 4: 0.08, 5: 0.05, 6: 0.03, 7: 0.02, 8: 0.01, 9: 0.01, 10: 0.01 };
+                  return ctrRates[position as keyof typeof ctrRates] || 0.005;
+                };
+                
+                const conversionRate = 0.25;
+                const currentRevenue = Math.floor(searchVolume * getCTR(currentPosition) * conversionRate * avgTicketCalc) || 0;
+                return total + currentRevenue;
+              }, 0) : 0)}
+              restaurantData={{
+                monthlyRevenue: data.monthlyRevenue,
+                avgTicket: data.avgTicket,
+                monthlyTransactions: Math.round(data.monthlyRevenue / data.avgTicket),
+                keywords: data.keywords,
+                currentLocalPackPosition: data.currentLocalPackPosition,
+                currentOrganicPosition: data.currentOrganicPosition,
+                socialFollowersInstagram: data.socialFollowersInstagram,
+                socialFollowersFacebook: data.socialFollowersFacebook,
+                emailListSize: data.emailListSize,
+                smsListSize: data.smsListSize,
+                localPackKeywords: data.localPackKeywords,
+                instagramMetrics: data.instagramMetrics,
+                facebookMetrics: data.facebookMetrics,
+                organicKeywords: data.organicKeywords
+              }}
+            />
           </div>
 
+          {/* What Top Performers Know */}
           <div style={{
-            background: 'linear-gradient(135deg, #8b9cf4 0%, #a97fc4 100%)',
-            color: 'white',
-            padding: '25px',
-            borderRadius: '15px',
-            textAlign: 'center'
+            background: 'white',
+            borderRadius: '20px',
+            padding: '40px',
+            marginBottom: '30px',
+            boxShadow: '0 20px 60px rgba(0,0,0,0.15)'
           }}>
-            <h4 style={{
-              fontSize: '1.2rem',
+            <h2 style={{
+              fontSize: '2.2rem',
               fontWeight: '700',
-              marginBottom: '15px',
-              margin: '0 0 15px 0'
-            }}>
-              📈 Data Sources & Validation
-            </h4>
-            <p style={{
-              fontSize: '14px',
-              lineHeight: '1.5',
-              margin: '0',
-              opacity: '0.95'
-            }}>
-              All calculations based on 2024 industry reports: Google Local Search Study, SMS Marketing Benchmark Report, 
-              Restaurant Social Media Analysis, and Mobile Marketing Association F&B data. 
-              Methodology validated across <strong>500+ restaurant locations</strong> in our client base.
-            </p>
-          </div>
-        </div>
-
-        {/* Service Recommendations */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(3, 1fr)',
-          gap: '20px'
-        }}>
-          {gaps.filter(g => g.serviceOffered && g.gap > 0).map(gap => (
-            <div key={gap.channel} style={{
-              background: 'white',
-              borderRadius: '20px',
-              padding: '30px',
-              boxShadow: '0 20px 60px rgba(0,0,0,0.15)',
-              border: `3px solid ${gap.color}`,
+              color: '#333',
+              marginBottom: '10px',
               textAlign: 'center'
             }}>
-              <h4 style={{
-                fontSize: '1.4rem',
-                fontWeight: '700',
-                color: '#333',
-                marginBottom: '15px'
-              }}>
-                {gap.channel}
-              </h4>
-              
-              <div style={{
-                fontSize: '2.5rem',
-                fontWeight: '700',
-                color: gap.color,
-                marginBottom: '10px'
-              }}>
-                +${Math.round(gap.gap).toLocaleString()}
-              </div>
-              
-              <p style={{
-                fontSize: '14px',
-                color: '#666',
-                marginBottom: '20px'
-              }}>
-                Additional monthly revenue potential
-              </p>
+              🚀 What Top Performers Know
+            </h2>
+            <p style={{
+              fontSize: '16px',
+              color: '#666',
+              textAlign: 'center',
+              marginBottom: '25px'
+            }}>
+              Industry secrets that separate winners from everyone else.
+            </p>
+            <ComprehensiveMetrics />
+          </div>
 
-              <div style={{
-                fontSize: '1.2rem',
+          {/* CTA */}
+          <div style={{
+            background: 'white',
+            borderRadius: '20px',
+            padding: '40px',
+            boxShadow: '0 20px 60px rgba(0,0,0,0.15)',
+            textAlign: 'center'
+          }}>
+            <h3 style={{
+              fontSize: '2rem',
+              fontWeight: '700',
+              color: '#333',
+              marginBottom: '20px'
+            }}>
+              Ready to Capture This Revenue?
+            </h3>
+            
+            <p style={{
+              fontSize: '1.2rem',
+              color: '#666',
+              marginBottom: '30px'
+            }}>
+              We specialize in SEO, Social Media Marketing, and SMS campaigns that deliver these exact results.
+            </p>
+
+            <button
+              onClick={() => setStep(2)}
+              style={{
+                background: 'linear-gradient(135deg, #8b9cf4 0%, #a97fc4 100%)',
+                color: 'white',
+                border: 'none',
+                padding: '20px 60px',
+                borderRadius: '50px',
+                fontSize: '18px',
                 fontWeight: '600',
-                color: '#333'
-              }}>
-                ${Math.round(gap.gap * 12).toLocaleString()}/year
-              </div>
-            </div>
-          ))}
-        </div>
+                cursor: 'pointer',
+                boxShadow: '0 10px 30px rgba(102, 126, 234, 0.4)',
+                marginRight: '20px',
+                outline: 'none'
+              }}
+            >
+              Schedule Strategy Call
+            </button>
 
-        {/* CTA */}
-        <div style={{
-          background: 'white',
-          borderRadius: '20px',
-          padding: '40px',
-          marginTop: '30px',
-          boxShadow: '0 20px 60px rgba(0,0,0,0.15)',
-          textAlign: 'center'
-        }}>
-          <h3 style={{
-            fontSize: '2rem',
-            fontWeight: '700',
-            color: '#333',
-            marginBottom: '20px'
-          }}>
-            Ready to Capture This Revenue?
-          </h3>
-          
-          <p style={{
-            fontSize: '1.2rem',
-            color: '#666',
-            marginBottom: '30px'
-          }}>
-            We specialize in SEO, Social Media Marketing, and SMS campaigns that deliver these exact results.
-          </p>
-
-          <button
-            onClick={() => setStep(2)}
-            style={{
-              background: 'linear-gradient(135deg, #8b9cf4 0%, #a97fc4 100%)',
-              color: 'white',
-              border: 'none',
-              padding: '20px 60px',
-              borderRadius: '50px',
-              fontSize: '18px',
-              fontWeight: '600',
-              cursor: 'pointer',
-              boxShadow: '0 10px 30px rgba(102, 126, 234, 0.4)',
-              marginRight: '20px',
-              outline: 'none'
-            }}
-          >
-            Schedule Strategy Call
-          </button>
-
-          <button
-            onClick={() => setStep(2)}
-            style={{
-              background: 'transparent',
-              color: '#8b9cf4',
-              border: '2px solid #8b9cf4',
-              padding: '20px 60px',
-              borderRadius: '50px',
-              fontSize: '18px',
-              fontWeight: '600',
-              cursor: 'pointer',
-              outline: 'none'
-            }}
-          >
-            Analyze Another Restaurant
-          </button>
+            <button
+              onClick={() => setStep(2)}
+              style={{
+                background: 'transparent',
+                color: '#8b9cf4',
+                border: '2px solid #8b9cf4',
+                padding: '20px 60px',
+                borderRadius: '50px',
+                fontSize: '18px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                outline: 'none'
+              }}
+            >
+              Analyze Another Restaurant
+            </button>
+          </div>
         </div>
       </div>
-    </div>
     );
   }
 
