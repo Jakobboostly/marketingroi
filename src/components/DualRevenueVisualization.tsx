@@ -94,13 +94,16 @@ const DualRevenueVisualization: React.FC<DualRevenueVisualizationProps> = ({
       smsPotentialRevenue = channelROICalculators.calculateSMSROI(monthlyTransactions * 0.3, 4, avgTicket);
     }
 
+    // Apply 15% boost to potential revenue upfront (bake it into the lever calculations)
+    const boostMultiplier = 1.15;
+    
     return [
       {
         id: 'seo',
         name: 'SEO & Local Search',
         isActive: false,
         currentRevenue: seoCurrentRevenue,
-        potentialRevenue: seoPotentialRevenue,
+        potentialRevenue: seoCurrentRevenue + ((seoPotentialRevenue - seoCurrentRevenue) * boostMultiplier),
         color: '#4CAF50',
         icon: '🔍',
         methodology: 'Based on Local Pack vs Organic search attribution (70%/30% split) and position-specific CTR: Local Pack Position #1 (33% CTR), #2 (22% CTR), #3 (13% CTR). Organic Search Position #1 (18% CTR), #2 (7% CTR), #3 (3% CTR). Uses 5% website conversion rate and 2.5x search volume multiplier.',
@@ -111,7 +114,7 @@ const DualRevenueVisualization: React.FC<DualRevenueVisualizationProps> = ({
         name: 'Social Media Marketing',
         isActive: false,
         currentRevenue: socialCurrentRevenue,
-        potentialRevenue: socialPotentialRevenue,
+        potentialRevenue: socialCurrentRevenue + ((socialPotentialRevenue - socialCurrentRevenue) * boostMultiplier),
         color: '#E91E63',
         icon: '📱',
         methodology: 'Calculated using realistic follower-to-customer conversion rates, with Instagram performing at 1.5% monthly conversion and Facebook at 0.5%. Accounts for posting frequency impact and content strategy optimization.',
@@ -122,7 +125,7 @@ const DualRevenueVisualization: React.FC<DualRevenueVisualizationProps> = ({
         name: 'SMS Marketing',
         isActive: false,
         currentRevenue: smsCurrentRevenue,
-        potentialRevenue: smsPotentialRevenue,
+        potentialRevenue: smsCurrentRevenue + ((smsPotentialRevenue - smsCurrentRevenue) * boostMultiplier),
         color: '#2196F3',
         icon: '💬',
         methodology: 'Based on 98% SMS open rate (highest in F&B sector), 19-20% click-through rate, and 25% conversion rate. Assumes 30% of customers would opt-in to SMS marketing with 4 campaigns per month. 10x higher redemption vs other channels.',
@@ -146,6 +149,7 @@ const DualRevenueVisualization: React.FC<DualRevenueVisualizationProps> = ({
     
     // Add optimized revenue from active levers + overall business growth
     if (isOptimized) {
+      const activeLeverCount = levers.filter(l => l.isActive).length;
       const additionalRevenue = levers.reduce((sum, lever) => {
         if (lever.isActive) {
           return sum + (lever.potentialRevenue - lever.currentRevenue);
@@ -153,9 +157,13 @@ const DualRevenueVisualization: React.FC<DualRevenueVisualizationProps> = ({
         return sum;
       }, 0);
       
-      // Overall business growth multiplier (better marketing lifts all boats)
-      const businessGrowthMultiplier = 1.15; // +15% baseline growth from better marketing
-      baseRevenue = (monthlyRevenue + additionalRevenue) * businessGrowthMultiplier;
+      // Simply add additional revenue from active levers (no multipliers)
+      if (activeLeverCount > 0) {
+        baseRevenue = monthlyRevenue + additionalRevenue;
+      } else {
+        // No levers active = same as current revenue
+        baseRevenue = monthlyRevenue;
+      }
     }
     
     // Third-Party Delivery
@@ -256,6 +264,26 @@ const DualRevenueVisualization: React.FC<DualRevenueVisualizationProps> = ({
     // Base scale 1.0, grow by 0.15 for each active lever (smoother than size changes)
     const scalePerLever = 0.15;
     return 1.0 + (activeLeverCount * scalePerLever);
+  };
+
+  // Generate dynamic title for optimized chart
+  const getOptimizedChartTitle = () => {
+    const leverServiceMap: { [key: string]: string } = {
+      'seo': 'SEO',
+      'social': 'Social Media',
+      'sms': 'SMS Marketing'
+    };
+
+    const activeServices = levers
+      .filter(lever => lever.isActive)
+      .map(lever => leverServiceMap[lever.id])
+      .filter(Boolean);
+
+    if (activeServices.length === 0) {
+      return 'Revenue DNA';
+    }
+
+    return `Revenue DNA + ${activeServices.join(' + ')}`;
   };
 
   // D3 Chart rendering function
@@ -487,7 +515,7 @@ const DualRevenueVisualization: React.FC<DualRevenueVisualizationProps> = ({
               backgroundClip: 'text',
               marginBottom: '20px'
             }}>
-              Optimized Revenue DNA
+              {getOptimizedChartTitle()}
             </h3>
             <div style={{ 
               display: 'flex', 
