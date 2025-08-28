@@ -178,7 +178,7 @@ const RestaurantSearch: React.FC<RestaurantSearchProps> = ({ onRestaurantSelecte
             lineHeight: '1.08',
             letterSpacing: '-0.02em'
           }}>
-            Find Your Restaurant
+            Restaurant Revenue Forecast
           </h1>
           
           <p style={{
