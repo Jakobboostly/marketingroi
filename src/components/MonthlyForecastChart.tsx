@@ -94,15 +94,24 @@ const MonthlyForecastChart: React.FC<MonthlyForecastChartProps> = ({
       .domain([0, 11])
       .range([0, innerWidth]);
 
-    // Ensure Y-axis starts from 0 and goes to max value with some padding
+    // Fixed Y-axis scale with $20k increments for consistent visual impact
     const maxRevenue = Math.max(
       d3.max(optimizedData, d => d.revenue) || 0,
       d3.max(baselineData, d => d.revenue) || 0,
       currentRevenue
     );
     
+    const minRevenue = Math.min(
+      d3.min(baselineData, d => d.revenue) || currentRevenue,
+      currentRevenue
+    );
+    
+    // Round to nearest 20k increments
+    const yMin = Math.floor(minRevenue * 0.8 / 20000) * 20000;
+    const yMax = Math.ceil(maxRevenue * 1.05 / 20000) * 20000;
+    
     const yScale = d3.scaleLinear()
-      .domain([0, maxRevenue * 1.1]) // Start from 0, add 10% padding at top
+      .domain([yMin, yMax])
       .range([innerHeight, 0]);
 
     // Line generators
