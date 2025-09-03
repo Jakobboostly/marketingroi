@@ -21,7 +21,7 @@ const MonthlyForecastChart: React.FC<MonthlyForecastChartProps> = ({
     svg.selectAll('*').remove();
 
     const width = 520;
-    const height = 180;
+    const height = 220;
     const margin = { top: 20, right: 60, bottom: 40, left: 80 };
     const innerWidth = width - margin.left - margin.right;
     const innerHeight = height - margin.top - margin.bottom;
@@ -363,15 +363,15 @@ const MonthlyForecastChart: React.FC<MonthlyForecastChartProps> = ({
     <div style={{
       background: 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)',
       borderRadius: '15px',
-      padding: '12px',
+      padding: '15px',
       margin: '0',
       height: '100%',
       boxShadow: '0 10px 30px rgba(0, 0, 0, 0.1)',
       border: '1px solid #cbd5e1'
     }}>
-      <div style={{ marginBottom: '8px' }}>
+      <div style={{ marginBottom: '10px' }}>
         <h2 style={{
-          fontSize: '18px',
+          fontSize: '20px',
           fontWeight: 'bold',
           color: '#1e293b',
           marginBottom: '5px',

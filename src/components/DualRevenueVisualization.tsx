@@ -491,9 +491,9 @@ const DualRevenueVisualization: React.FC<DualRevenueVisualizationProps> = ({
       <div style={{
         display: 'grid',
         gridTemplateColumns: '1fr 1fr',
-        gridTemplateRows: '300px 260px',
-        gap: '15px',
-        marginBottom: '10px'
+        gridTemplateRows: 'auto auto',
+        gap: '30px',
+        marginBottom: '40px'
       }}>
         {/* Current Revenue Chart */}
         <div style={{
