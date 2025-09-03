@@ -52,7 +52,7 @@ class DataForSeoRankedKeywordsService {
       target: domain,
       language_name: "English",
       location_code: 2840, // United States
-      limit: 12
+      limit: 40
     };
 
     try {
@@ -213,9 +213,18 @@ class DataForSeoRankedKeywordsService {
         }
       });
 
+      // Sort by search volume (descending) and take top 5 keywords
+      const sortedKeywords = keywordData
+        .sort((a, b) => (b.searchVolume || 0) - (a.searchVolume || 0))
+        .slice(0, 5);
+
+      console.log(`Filtered to top 5 keywords by search volume:`, sortedKeywords.map(k => 
+        `${k.keyword} (${k.searchVolume} volume)`
+      ));
+
       return {
         success: true,
-        keywords: keywordData,
+        keywords: sortedKeywords,
         totalKeywords: result.total_count,
         domain: result.domain
       };

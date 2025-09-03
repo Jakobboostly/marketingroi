@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState, useMemo } from 'react';
 import * as d3 from 'd3';
 import { channelROICalculators } from '../data/restaurantStats';
 import { calculateUnifiedRevenue, RevenueCalculationInputs } from '../services/revenueCalculations';
+import MonthlyForecastChart from './MonthlyForecastChart';
 
 interface AttributionData {
   channel: string;
@@ -144,7 +145,7 @@ const DualRevenueVisualization: React.FC<DualRevenueVisualizationProps> = ({
 
   // Calculate attribution for both current and optimized scenarios
   const calculateAttribution = (isOptimized: boolean = false): AttributionData[] => {
-    const attribution: AttributionData[] = [];
+    let attribution: AttributionData[] = [];
     let baseRevenue = monthlyRevenue;
     
     // Add optimized revenue from active levers + overall business growth
@@ -245,9 +246,23 @@ const DualRevenueVisualization: React.FC<DualRevenueVisualizationProps> = ({
       item.channel !== 'Third-Party Delivery' ? sum + item.revenue : sum, 0);
     const totalChannelRevenue = thirdPartyRevenue + otherChannelsRevenue;
     
+    // Calculate Direct/Walk-in revenue with spillover effect when optimized
+    let directRevenue = baseRevenue - totalChannelRevenue;
+    
+    // When optimized and levers are active, add spillover boost to Direct/Walk-in
+    if (isOptimized) {
+      const hasActiveLevers = levers.some(l => l.isActive);
+      if (hasActiveLevers) {
+        // 15-20% boost to Direct/Walk-in from marketing spillover effects
+        const spilloverMultiplier = 1.18; // 18% boost
+        const baseDirectRevenue = Math.max(directRevenue, baseRevenue * 0.2); // Ensure minimum 20% is direct
+        directRevenue = baseDirectRevenue * spilloverMultiplier;
+      }
+    }
+    
     // If total channels exceed base revenue, scale them proportionally
     if (totalChannelRevenue > baseRevenue) {
-      const scalingFactor = baseRevenue / totalChannelRevenue;
+      const scalingFactor = (baseRevenue * 0.8) / totalChannelRevenue; // Leave 20% for Direct/Walk-in
       // Scale down all non-third-party channels proportionally
       attribution = attribution.map(item => {
         if (item.channel !== 'Third-Party Delivery') {
@@ -268,19 +283,24 @@ const DualRevenueVisualization: React.FC<DualRevenueVisualizationProps> = ({
         }
       }
       
-      // No Direct/Walk-in needed since all revenue is accounted for
-    } else {
-      // Normal case: add Direct/Walk-in for remaining revenue
-      const directRevenue = baseRevenue - totalChannelRevenue;
-      if (directRevenue > 0) {
-        attribution.push({
-          channel: 'Direct/Walk-in',
-          revenue: directRevenue,
-          percentage: (directRevenue / baseRevenue) * 100,
-          color: '#2E7D32',
-          details: 'Repeat customers, walk-ins, direct traffic'
-        });
+      // Always add some Direct/Walk-in
+      directRevenue = baseRevenue * 0.2; // At least 20% direct
+      if (isOptimized && levers.some(l => l.isActive)) {
+        directRevenue *= 1.18; // Apply spillover boost
       }
+    }
+    
+    // Add Direct/Walk-in revenue
+    if (directRevenue > 0) {
+      attribution.push({
+        channel: 'Direct/Walk-in',
+        revenue: directRevenue,
+        percentage: (directRevenue / baseRevenue) * 100,
+        color: '#2E7D32',
+        details: isOptimized && levers.some(l => l.isActive) 
+          ? 'Enhanced by brand awareness & word-of-mouth' 
+          : 'Repeat customers, walk-ins, direct traffic'
+      });
     }
     
     return attribution.sort((a, b) => b.revenue - a.revenue);
@@ -467,11 +487,12 @@ const DualRevenueVisualization: React.FC<DualRevenueVisualizationProps> = ({
         </p>
       </div>
 
-      {/* Dual Charts */}
+      {/* 2x2 Grid Layout */}
       <div style={{
         display: 'grid',
         gridTemplateColumns: '1fr 1fr',
-        gap: '40px',
+        gridTemplateRows: 'auto auto',
+        gap: '30px',
         marginBottom: '40px'
       }}>
         {/* Current Revenue Chart */}
@@ -567,15 +588,30 @@ const DualRevenueVisualization: React.FC<DualRevenueVisualizationProps> = ({
             </div>
           </div>
         </div>
-      </div>
 
-      {/* Interactive Levers */}
+        {/* Top Right: Monthly Forecast Chart */}
+        <div style={{
+          gridColumn: '2 / 3',
+          gridRow: '1 / 2'
+        }}>
+          <MonthlyForecastChart 
+            currentRevenue={monthlyRevenue}
+            leverStates={leverStates}
+            monthlyGrowthPotential={growthPotential}
+          />
+        </div>
+
+        {/* Bottom Right: Interactive Levers */}
+        <div style={{
+          gridColumn: '2 / 3',
+          gridRow: '2 / 3'
+        }}>
       <div style={{
-        marginBottom: '40px',
         background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
         borderRadius: '16px',
-        padding: '30px',
-        border: '1px solid #e2e8f0'
+        padding: '20px',
+        border: '1px solid #e2e8f0',
+        height: '100%'
       }}>
         <h3 style={{
           fontSize: '1.8rem',
@@ -712,6 +748,8 @@ const DualRevenueVisualization: React.FC<DualRevenueVisualizationProps> = ({
               </div>
             </div>
           ))}
+        </div>
+      </div>
         </div>
       </div>
 
@@ -909,15 +947,61 @@ const DualRevenueVisualization: React.FC<DualRevenueVisualizationProps> = ({
               
               if (searchVolume <= 0) return null;
               
+              // Use pure Local Pack CTR rates from restaurant-stats-markdown.md
               const getCTR = (position: number) => {
-                const ctrRates = { 1: 0.25, 2: 0.18, 3: 0.12, 4: 0.08, 5: 0.05, 6: 0.03, 7: 0.02, 8: 0.01, 9: 0.01, 10: 0.01 };
-                return ctrRates[position as keyof typeof ctrRates] || 0.005;
+                // Restaurant keywords typically show in Local Pack - use these rates
+                const localPackRates = { 
+                  1: 0.33,   // 33% for position #1
+                  2: 0.22,   // 22% for position #2  
+                  3: 0.13,   // 13% for position #3
+                  4: 0.08,   // Estimated for lower positions
+                  5: 0.05,
+                  6: 0.03,
+                  7: 0.02,
+                  8: 0.015,
+                  9: 0.01,
+                  10: 0.008,
+                  11: 0.006,
+                  12: 0.005,
+                  13: 0.004,
+                  14: 0.0035,
+                  15: 0.003,
+                  16: 0.0025,
+                  17: 0.002,
+                  18: 0.0018,
+                  19: 0.0016,
+                  20: 0.008,
+                  21: 0.007,
+                  22: 0.006,
+                  23: 0.005,
+                  24: 0.004,
+                  25: 0.003,
+                  26: 0.002,
+                  27: 0.0015,
+                  28: 0.001,
+                  29: 0.0008,
+                  30: 0.0005
+                };
+                return localPackRates[position as keyof typeof localPackRates] || 0.0003;
               };
               
-              const conversionRate = 0.25;
-              const currentRevenue = Math.floor(searchVolume * getCTR(currentPosition) * conversionRate * avgTicketCalc) || 0;
-              const targetRevenue = Math.floor(searchVolume * getCTR(targetPosition) * conversionRate * avgTicketCalc) || 0;
-              const improvementRevenue = Math.max(0, targetRevenue - currentRevenue) || 0;
+              // Use restaurant industry conversion rate from benchmarks
+              const conversionRate = 0.05; // 5% from restaurant-stats-markdown.md
+              
+              // For keywords not in top 3, we can get them to #1 with 33% CTR
+              const currentCTR = getCTR(currentPosition);
+              const targetCTR = currentPosition > 3 ? 0.33 : getCTR(targetPosition); // If not top 3, we can get to #1 (33% CTR)
+              
+              const currentRevenue = Math.floor(searchVolume * currentCTR * conversionRate * avgTicketCalc);
+              const targetRevenue = Math.floor(searchVolume * targetCTR * conversionRate * avgTicketCalc);
+              
+              // For keywords already at #1, there's no improvement possible
+              let improvementRevenue = Math.max(0, targetRevenue - currentRevenue);
+              
+              // Don't show fake improvements for #1 positions
+              if (currentPosition === 1) {
+                improvementRevenue = 0;
+              }
               
               return {
                 ...keyword,

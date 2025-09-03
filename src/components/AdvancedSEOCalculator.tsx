@@ -45,7 +45,8 @@ const AdvancedSEOCalculator: React.FC<AdvancedSEOCalculatorProps> = ({ avgTicket
 
   if (!seoResults) return null;
 
-  const topOpportunities = seoResults.keywordBreakdown.slice(0, 5);
+  // Keywords are already filtered to top 5 by search volume in the API service
+  const topOpportunities = seoResults.keywordBreakdown;
 
   return (
     <div style={{
