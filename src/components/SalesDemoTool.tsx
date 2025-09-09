@@ -108,11 +108,11 @@ interface SalesDemoToolProps {
 }
 
 const SalesDemoTool: React.FC<SalesDemoToolProps> = ({
-  cachedData,
+  cachedData = null,
   onAnalysisComplete,
   onStartNewAnalysis,
   placeId
-}) => {
+} = {}) => {
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
   const [isLoadingDetection, setIsLoadingDetection] = useState(false);
@@ -1986,7 +1986,25 @@ const SalesDemoTool: React.FC<SalesDemoToolProps> = ({
                 if (onStartNewAnalysis) {
                   onStartNewAnalysis();
                 } else {
-                  navigate('/new');
+                  // Reset to step 1 for new analysis
+                  setStep(1);
+                  // Reset all data
+                  setData({
+                    placeId: '',
+                    placeName: '',
+                    placeAddress: '',
+                    placeRating: 0,
+                    placeReviewCount: 0,
+                    placePhotoUrl: '',
+                    website: '',
+                    isDataAutoDetected: false,
+                    monthlyRevenue: 50000,
+                    avgTicket: 45,
+                    monthlyTransactions: 1111,
+                    keywords: [],
+                    keywordsAutoDetected: false,
+                    keywordsFetchError: undefined
+                  });
                 }
               }}
               style={{

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { BrowserRouter as Router, Routes, Route, useLocation, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import RestaurantAnalysis from './components/RestaurantAnalysis';
 import RefinedCreativeMode from './components/RefinedCreativeMode';
 import CacheManager from './components/CacheManager';
@@ -13,7 +13,6 @@ function AppContent() {
     avgTicket: 25,
     monthlyTransactions: 3000
   });
-  const location = useLocation();
 
   if (showCreativeMode) {
     return (
