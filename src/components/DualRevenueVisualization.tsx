@@ -66,6 +66,8 @@ const DualRevenueVisualization: React.FC<DualRevenueVisualizationProps> = ({
   const currentChartRef = useRef<SVGSVGElement>(null);
   const optimizedChartRef = useRef<SVGSVGElement>(null);
   const [hoveredSegment, setHoveredSegment] = useState<string | null>(null);
+  const [hoveredData, setHoveredData] = useState<AttributionData | null>(null);
+  const [mousePosition, setMousePosition] = useState<{x: number, y: number}>({x: 0, y: 0});
   const [leverStates, setLeverStates] = useState<{[key: string]: boolean}>({});
 
   // Calculate lever data using unified revenue calculations
@@ -394,12 +396,17 @@ const DualRevenueVisualization: React.FC<DualRevenueVisualizationProps> = ({
       .style('stroke-width', isOptimized ? 3 : 2)
       .style('cursor', 'pointer')
       .style('filter', isOptimized ? 'url(#glow)' : 'none')
-      .on('mouseover', function(_, d) {
+      .on('mouseover', function(event, d) {
         d3.select(this)
           .transition()
           .duration(200)
           .attr('d', hoverArc(d));
         setHoveredSegment(d.data.channel);
+        setHoveredData(d.data);
+        setMousePosition({x: event.pageX, y: event.pageY});
+      })
+      .on('mousemove', function(event, d) {
+        setMousePosition({x: event.pageX, y: event.pageY});
       })
       .on('mouseout', function(_, d) {
         d3.select(this)
@@ -407,9 +414,10 @@ const DualRevenueVisualization: React.FC<DualRevenueVisualizationProps> = ({
           .duration(200)
           .attr('d', arc(d));
         setHoveredSegment(null);
+        setHoveredData(null);
       });
 
-    // Add percentage labels
+    // Add percentage labels only for larger segments
     segments.append('text')
       .attr('transform', d => `translate(${arc.centroid(d)})`)
       .attr('text-anchor', 'middle')
@@ -417,7 +425,33 @@ const DualRevenueVisualization: React.FC<DualRevenueVisualizationProps> = ({
       .style('font-weight', 'bold')
       .style('font-size', isOptimized ? '13px' : '12px')
       .style('pointer-events', 'none')
-      .text(d => d.data.percentage > 5 ? `${d.data.percentage.toFixed(0)}%` : '');
+      .style('text-shadow', '1px 1px 2px rgba(0,0,0,0.7)')
+      .text(d => d.data.percentage > 8 ? `${d.data.percentage.toFixed(0)}%` : '');
+
+    // Add channel names for larger segments
+    segments.append('text')
+      .attr('transform', d => {
+        const [x, y] = arc.centroid(d);
+        return `translate(${x}, ${y + 15})`;
+      })
+      .attr('text-anchor', 'middle')
+      .style('fill', 'white')
+      .style('font-weight', '600')
+      .style('font-size', isOptimized ? '11px' : '10px')
+      .style('pointer-events', 'none')
+      .style('text-shadow', '1px 1px 2px rgba(0,0,0,0.7)')
+      .text(d => {
+        if (d.data.percentage > 12) {
+          // Abbreviate long channel names for space
+          const channelAbbrev = d.data.channel
+            .replace('Social Media Marketing', 'Social Media')
+            .replace('SEO & Local Search', 'SEO/Local')
+            .replace('Third-Party Delivery', '3rd Party')
+            .replace('Direct/Walk-in', 'Direct');
+          return channelAbbrev;
+        }
+        return '';
+      });
 
     // Center text
     const totalRevenue = data.reduce((sum, d) => sum + d.revenue, 0);
@@ -451,12 +485,67 @@ const DualRevenueVisualization: React.FC<DualRevenueVisualizationProps> = ({
   const currentData = calculateAttribution(false);
   const optimizedData = calculateAttribution(true);
   const totalOptimizedRevenue = optimizedData.reduce((sum, d) => sum + d.revenue, 0);
-  const growthPotential = totalOptimizedRevenue - monthlyRevenue;
+  
+  // Calculate growth potential using the same method as lever calculations
+  const actualGrowthPotential = levers.reduce((sum, lever) => {
+    if (lever.isActive) {
+      return sum + (lever.potentialRevenue - lever.currentRevenue);
+    }
+    return sum;
+  }, 0);
+  
+  const growthPotential = actualGrowthPotential;
   const growthPercentage = (growthPotential / monthlyRevenue) * 100;
   const optimizedChartScale = getOptimizedChartScale();
 
   return (
-    <div style={{ fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif" }}>
+    <div style={{ fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif", position: 'relative' }}>
+      {/* Custom Tooltip */}
+      {hoveredData && (
+        <div style={{
+          position: 'fixed',
+          left: mousePosition.x + 15,
+          top: mousePosition.y - 10,
+          background: 'rgba(0, 0, 0, 0.9)',
+          color: 'white',
+          padding: '12px 16px',
+          borderRadius: '8px',
+          fontSize: '14px',
+          fontWeight: '500',
+          zIndex: 10000,
+          pointerEvents: 'none',
+          maxWidth: '250px',
+          boxShadow: '0 4px 20px rgba(0, 0, 0, 0.3)',
+          border: `2px solid ${hoveredData.color}`
+        }}>
+          <div style={{ 
+            fontWeight: 'bold', 
+            marginBottom: '6px',
+            color: hoveredData.color,
+            fontSize: '15px'
+          }}>
+            {hoveredData.channel}
+          </div>
+          <div style={{ marginBottom: '4px' }}>
+            <strong>Revenue:</strong> ${Math.round(hoveredData.revenue).toLocaleString()}
+          </div>
+          <div style={{ marginBottom: '4px' }}>
+            <strong>Percentage:</strong> {hoveredData.percentage.toFixed(1)}%
+          </div>
+          {hoveredData.details && (
+            <div style={{ 
+              fontSize: '12px', 
+              color: '#ccc',
+              marginTop: '8px',
+              borderTop: '1px solid #444',
+              paddingTop: '6px'
+            }}>
+              {hoveredData.details}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Header */}
       <div style={{ textAlign: 'center', marginBottom: '40px' }}>
         <h2 style={{
@@ -483,7 +572,7 @@ const DualRevenueVisualization: React.FC<DualRevenueVisualizationProps> = ({
           color: '#10b981',
           margin: 0
         }}>
-          Unlock ${Math.round(growthPotential).toLocaleString()} ({growthPercentage.toFixed(0)}% growth)
+          Unlock ${Math.round(actualGrowthPotential).toLocaleString()} ({((actualGrowthPotential / monthlyRevenue) * 100).toFixed(1)}% growth)
         </p>
       </div>
 
@@ -515,8 +604,46 @@ const DualRevenueVisualization: React.FC<DualRevenueVisualizationProps> = ({
           }}>
             Current Revenue DNA
           </h3>
-          <div style={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
+          <div style={{ display: 'flex', justifyContent: 'center', width: '100%', position: 'relative' }}>
             <svg ref={currentChartRef} width={480} height={400}></svg>
+            
+            {/* Legend for smaller segments */}
+            <div style={{
+              position: 'absolute',
+              top: '10px',
+              right: '10px',
+              background: 'rgba(255, 255, 255, 0.95)',
+              borderRadius: '8px',
+              padding: '12px',
+              fontSize: '11px',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+              border: '1px solid #e2e8f0',
+              minWidth: '120px'
+            }}>
+              <div style={{ fontWeight: 'bold', marginBottom: '8px', fontSize: '12px' }}>Revenue Mix</div>
+              {currentData.map((item, index) => (
+                <div key={index} style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  marginBottom: '4px',
+                  opacity: hoveredSegment === item.channel ? 1 : (hoveredSegment ? 0.5 : 1),
+                  transition: 'opacity 0.2s'
+                }}>
+                  <div style={{
+                    width: '8px',
+                    height: '8px',
+                    backgroundColor: item.color,
+                    borderRadius: '50%',
+                    marginRight: '6px',
+                    flexShrink: 0
+                  }} />
+                  <div style={{ fontSize: '10px', lineHeight: '1.2' }}>
+                    <div style={{ fontWeight: '600' }}>{item.channel}</div>
+                    <div style={{ color: '#666' }}>{item.percentage.toFixed(1)}%</div>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
 
@@ -574,17 +701,57 @@ const DualRevenueVisualization: React.FC<DualRevenueVisualizationProps> = ({
               height: '600px', // Fixed container height to prevent layout shifts
               overflow: 'visible' // Allow chart to grow beyond container
             }}>
-              <svg 
-                ref={optimizedChartRef} 
-                width={480} 
-                height={400}
-                style={{
-                  transform: `scale(${optimizedChartScale})`,
-                  transformOrigin: 'center center',
-                  transition: 'transform 0.8s cubic-bezier(0.4, 0, 0.2, 1)',
-                  filter: `drop-shadow(0 8px 25px rgba(255,215,0,${0.3 + (levers.filter(l => l.isActive).length * 0.1)}))`,
-                }}
-              ></svg>
+              <div style={{ position: 'relative' }}>
+                <svg 
+                  ref={optimizedChartRef} 
+                  width={480} 
+                  height={400}
+                  style={{
+                    transform: `scale(${optimizedChartScale})`,
+                    transformOrigin: 'center center',
+                    transition: 'transform 0.8s cubic-bezier(0.4, 0, 0.2, 1)',
+                    filter: `drop-shadow(0 8px 25px rgba(255,215,0,${0.3 + (levers.filter(l => l.isActive).length * 0.1)}))`,
+                  }}
+                ></svg>
+                
+                {/* Legend for optimized chart */}
+                <div style={{
+                  position: 'absolute',
+                  top: '10px',
+                  right: '10px',
+                  background: 'rgba(255, 248, 237, 0.95)',
+                  borderRadius: '8px',
+                  padding: '12px',
+                  fontSize: '11px',
+                  boxShadow: '0 2px 8px rgba(255,215,0,0.2)',
+                  border: '1px solid #fbbf24',
+                  minWidth: '120px'
+                }}>
+                  <div style={{ fontWeight: 'bold', marginBottom: '8px', fontSize: '12px', color: '#92400e' }}>Optimized Mix</div>
+                  {optimizedData.map((item, index) => (
+                    <div key={index} style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      marginBottom: '4px',
+                      opacity: hoveredSegment === item.channel ? 1 : (hoveredSegment ? 0.5 : 1),
+                      transition: 'opacity 0.2s'
+                    }}>
+                      <div style={{
+                        width: '8px',
+                        height: '8px',
+                        backgroundColor: item.color,
+                        borderRadius: '50%',
+                        marginRight: '6px',
+                        flexShrink: 0
+                      }} />
+                      <div style={{ fontSize: '10px', lineHeight: '1.2' }}>
+                        <div style={{ fontWeight: '600', color: '#92400e' }}>{item.channel}</div>
+                        <div style={{ color: '#b45309' }}>{item.percentage.toFixed(1)}%</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -598,6 +765,13 @@ const DualRevenueVisualization: React.FC<DualRevenueVisualizationProps> = ({
             currentRevenue={monthlyRevenue}
             leverStates={leverStates}
             monthlyGrowthPotential={growthPotential}
+            restaurantData={restaurantData}
+            leverData={levers.map(lever => ({
+              id: lever.id,
+              currentRevenue: lever.currentRevenue,
+              potentialRevenue: lever.potentialRevenue,
+              isActive: lever.isActive
+            }))}
           />
         </div>
 
@@ -863,15 +1037,15 @@ const DualRevenueVisualization: React.FC<DualRevenueVisualizationProps> = ({
             </h4>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
               <span>Additional Monthly Revenue:</span>
-              <span style={{ fontWeight: '700' }}>+${Math.round(growthPotential).toLocaleString()}</span>
+              <span style={{ fontWeight: '700' }}>+${Math.round(actualGrowthPotential).toLocaleString()}</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
               <span>Growth Percentage:</span>
-              <span style={{ fontWeight: '700' }}>{growthPercentage.toFixed(1)}%</span>
+              <span style={{ fontWeight: '700' }}>{((actualGrowthPotential / monthlyRevenue) * 100).toFixed(1)}%</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
               <span>Annual Revenue Impact:</span>
-              <span style={{ fontWeight: '700' }}>${Math.round(growthPotential * 12).toLocaleString()}</span>
+              <span style={{ fontWeight: '700' }}>${Math.round(actualGrowthPotential * 12).toLocaleString()}</span>
             </div>
           </div>
         </div>

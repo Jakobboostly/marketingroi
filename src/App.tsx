@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import SalesDemoTool from './components/SalesDemoTool';
+import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
+import RestaurantAnalysis from './components/RestaurantAnalysis';
 import RefinedCreativeMode from './components/RefinedCreativeMode';
 import CacheManager from './components/CacheManager';
 
-function App() {
+function AppContent() {
   const [showCreativeMode, setShowCreativeMode] = useState(false);
   const [showCacheManager, setShowCacheManager] = useState(false);
   const [restaurantData, setRestaurantData] = useState({
@@ -12,6 +13,7 @@ function App() {
     avgTicket: 25,
     monthlyTransactions: 3000
   });
+  const location = useLocation();
 
   if (showCreativeMode) {
     return (
@@ -24,7 +26,11 @@ function App() {
 
   return (
     <>
-      <SalesDemoTool />
+      <Routes>
+        <Route path="/" element={<RestaurantAnalysis />} />
+        <Route path="/new" element={<RestaurantAnalysis />} />
+        <Route path="/:placeId" element={<RestaurantAnalysis />} />
+      </Routes>
       
       {/* Control Buttons */}
       <div style={{
@@ -102,6 +108,14 @@ function App() {
         <CacheManager onClose={() => setShowCacheManager(false)} />
       )}
     </>
+  );
+}
+
+function App() {
+  return (
+    <Router>
+      <AppContent />
+    </Router>
   );
 }
 

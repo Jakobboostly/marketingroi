@@ -1,16 +1,26 @@
 import React, { useEffect, useRef } from 'react';
 import * as d3 from 'd3';
+import { calculateUnifiedRevenue, RevenueCalculationInputs } from '../services/revenueCalculations';
 
 interface MonthlyForecastChartProps {
   currentRevenue: number;
   leverStates: {[key: string]: boolean};
   monthlyGrowthPotential?: number;
+  restaurantData?: RevenueCalculationInputs;
+  leverData?: Array<{
+    id: string;
+    currentRevenue: number;
+    potentialRevenue: number;
+    isActive: boolean;
+  }>;
 }
 
 const MonthlyForecastChart: React.FC<MonthlyForecastChartProps> = ({
   currentRevenue,
   leverStates,
-  monthlyGrowthPotential = 0
+  monthlyGrowthPotential = 0,
+  restaurantData,
+  leverData
 }) => {
   const svgRef = useRef<SVGSVGElement>(null);
 
@@ -20,8 +30,8 @@ const MonthlyForecastChart: React.FC<MonthlyForecastChartProps> = ({
     const svg = d3.select(svgRef.current);
     svg.selectAll('*').remove();
 
-    const width = 520;
-    const height = 220;
+    const width = 680;
+    const height = 300;
     const margin = { top: 20, right: 60, bottom: 40, left: 80 };
     const innerWidth = width - margin.left - margin.right;
     const innerHeight = height - margin.top - margin.bottom;
@@ -52,7 +62,7 @@ const MonthlyForecastChart: React.FC<MonthlyForecastChartProps> = ({
       .attr('stop-opacity', 0.05);
 
     // Generate monthly data
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const months = ['Month 1', 'Month 2', 'Month 3', 'Month 4', 'Month 5', 'Month 6', 'Month 7', 'Month 8', 'Month 9', 'Month 10', 'Month 11', 'Month 12'];
     
     // No longer using complex growth multipliers - using actual lever calculations instead
 
@@ -62,25 +72,34 @@ const MonthlyForecastChart: React.FC<MonthlyForecastChartProps> = ({
       revenue: currentRevenue * (1 + (0.005 * i)) // 0.5% monthly growth (realistic without marketing investment)
     }));
 
-    // Use actual growth potential from lever calculations, not fabricated multipliers
+    // Use actual lever calculations for optimized data
     const optimizedData = months.map((month, i) => {
+      // Base revenue with natural growth
+      const baseWithGrowth = currentRevenue * (1 + (0.005 * i)); // 0.5% monthly growth
+      
       // If no levers active, same as baseline
-      if (monthlyGrowthPotential <= 0) {
+      if (!leverData || leverData.length === 0 || !leverData.some(l => l.isActive)) {
         return {
           month,
           monthIndex: i,
-          revenue: currentRevenue * (1 + (0.005 * i))
+          revenue: baseWithGrowth
         };
       }
       
-      // Gradual ramp up to full potential by month 6, then steady growth
-      const rampUpFactor = i <= 6 ? (i / 6) : 1;
-      const additionalRevenue = monthlyGrowthPotential * rampUpFactor;
+      // Calculate additional revenue from active levers
+      const additionalRevenue = leverData.reduce((sum, lever) => {
+        if (lever.isActive) {
+          // Gradual ramp up to full potential by month 6, then steady
+          const rampUpFactor = i <= 6 ? (i / 6) : 1;
+          return sum + ((lever.potentialRevenue - lever.currentRevenue) * rampUpFactor);
+        }
+        return sum;
+      }, 0);
       
       return {
         month,
         monthIndex: i,
-        revenue: (currentRevenue * (1 + (0.005 * i))) + additionalRevenue
+        revenue: baseWithGrowth + additionalRevenue
       };
     });
 
@@ -300,7 +319,7 @@ const MonthlyForecastChart: React.FC<MonthlyForecastChartProps> = ({
             <div style="font-weight: bold; margin-bottom: 5px;">${months[i]}</div>
             <div style="color: #94a3b8;">Without: $${(baselineValue / 1000).toFixed(1)}k</div>
             <div style="color: #10b981;">With Boostly: $${(optimizedValue / 1000).toFixed(1)}k</div>
-            <div style="color: #fbbf24; margin-top: 5px;">+$${(difference / 1000).toFixed(1)}k (+${((difference / baselineValue) * 100).toFixed(0)}%)</div>
+            <div style="color: #fbbf24; margin-top: 5px;">+$${(difference / 1000).toFixed(1)}k (+${((difference / baselineValue) * 100).toFixed(1)}%)</div>
           `)
             .style('left', (event.pageX + 10) + 'px')
             .style('top', (event.pageY - 28) + 'px')
@@ -314,42 +333,24 @@ const MonthlyForecastChart: React.FC<MonthlyForecastChartProps> = ({
     };
   }, [currentRevenue, leverStates]);
 
-  // Calculate key metrics
+  // Calculate key metrics using consistent data
   const calculateMetrics = () => {
     let totalAdditional = 0;
     let breakEvenMonth = 0;
     let yearEndGrowth = 0;
     
     for (let i = 0; i < 12; i++) {
-      const baselineRevenue = currentRevenue * (1 + (0.02 * i));
-      let optimizedRevenue = currentRevenue;
+      const baselineRevenue = baselineData[i].revenue;
+      const optimizedRevenue = optimizedData[i].revenue;
+      const monthlyAdditional = optimizedRevenue - baselineRevenue;
       
-      // Recalculate with same logic as chart
-      let multiplier = 1.0;
-      
-      if (leverStates.sms) {
-        multiplier += 0.08 + (0.02 * i);
-      }
-      if (leverStates.social) {
-        multiplier += i <= 2 ? 0.03 * i : 0.06 + (0.035 * (i - 2));
-      }
-      if (leverStates.seo) {
-        multiplier += i <= 3 ? 0.02 * i : 0.06 + (0.045 * (i - 3));
-      }
-      
-      const hasActiveLevers = leverStates.sms || leverStates.social || leverStates.seo;
-      if (hasActiveLevers) {
-        multiplier += 0.05 + (0.015 * i);
-      }
-      
-      optimizedRevenue = currentRevenue * multiplier;
-      totalAdditional += (optimizedRevenue - baselineRevenue);
+      totalAdditional += monthlyAdditional;
       
       if (i === 11) {
         yearEndGrowth = ((optimizedRevenue - baselineRevenue) / baselineRevenue) * 100;
       }
       
-      if (breakEvenMonth === 0 && totalAdditional > 5000) {
+      if (breakEvenMonth === 0 && monthlyAdditional > 5000) {
         breakEvenMonth = i + 1;
       }
     }
@@ -431,7 +432,7 @@ const MonthlyForecastChart: React.FC<MonthlyForecastChartProps> = ({
         </div>
       </div>
       
-      <svg ref={svgRef}></svg>
+      <svg ref={svgRef} width={680} height={300}></svg>
       
       <div style={{
         marginTop: '10px',
