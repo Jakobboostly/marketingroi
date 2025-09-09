@@ -265,11 +265,8 @@ const SalesDemoTool: React.FC<SalesDemoToolProps> = ({
 
       // If we have cached data, skip to step 4 (results)
       setStep(4);
-    } else if (placeId === 'new') {
-      // Fresh analysis
-      setStep(1);
-    } else if (!placeId || placeId === 'new') {
-      // Default case
+    } else {
+      // Fresh analysis or no place ID
       setStep(1);
     }
   }, [cachedData, placeId]);

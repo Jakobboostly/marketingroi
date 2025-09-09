@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import RestaurantAnalysis from './components/RestaurantAnalysis';
 import RefinedCreativeMode from './components/RefinedCreativeMode';
 import CacheManager from './components/CacheManager';
@@ -27,7 +27,7 @@ function AppContent() {
   return (
     <>
       <Routes>
-        <Route path="/" element={<RestaurantAnalysis />} />
+        <Route path="/" element={<Navigate to="/new" replace />} />
         <Route path="/new" element={<RestaurantAnalysis />} />
         <Route path="/:placeId" element={<RestaurantAnalysis />} />
       </Routes>

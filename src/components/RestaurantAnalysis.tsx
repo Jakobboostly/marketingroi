@@ -28,6 +28,10 @@ const RestaurantAnalysis: React.FC<RestaurantAnalysisProps> = ({ isDirectAccess 
       }
       
       setIsLoading(false);
+    } else {
+      // For root path or 'new', ensure we're not loading
+      setIsLoading(false);
+      setCachedData(null);
     }
   }, [placeId]);
 
@@ -45,8 +49,6 @@ const RestaurantAnalysis: React.FC<RestaurantAnalysisProps> = ({ isDirectAccess 
     // Clear any cached data and reset to fresh state
     setCachedData(null);
     navigate('/new');
-    // Force a page reload to ensure clean state
-    window.location.reload();
   };
 
   if (isLoading) {
