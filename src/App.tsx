@@ -1,10 +1,9 @@
 import React, { useState } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import RestaurantAnalysis from './components/RestaurantAnalysis';
+import SalesDemoTool from './components/SalesDemoTool';
 import RefinedCreativeMode from './components/RefinedCreativeMode';
 import CacheManager from './components/CacheManager';
 
-function AppContent() {
+function App() {
   const [showCreativeMode, setShowCreativeMode] = useState(false);
   const [showCacheManager, setShowCacheManager] = useState(false);
   const [restaurantData, setRestaurantData] = useState({
@@ -25,11 +24,7 @@ function AppContent() {
 
   return (
     <>
-      <Routes>
-        <Route path="/" element={<Navigate to="/new" replace />} />
-        <Route path="/new" element={<RestaurantAnalysis />} />
-        <Route path="/:placeId" element={<RestaurantAnalysis />} />
-      </Routes>
+      <SalesDemoTool />
       
       {/* Control Buttons */}
       <div style={{
@@ -107,14 +102,6 @@ function AppContent() {
         <CacheManager onClose={() => setShowCacheManager(false)} />
       )}
     </>
-  );
-}
-
-function App() {
-  return (
-    <Router>
-      <AppContent />
-    </Router>
   );
 }
 

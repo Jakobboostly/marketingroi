@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import * as d3 from 'd3';
 import { restaurantBenchmarks } from '../data/restaurantStats';
 import { calculateUnifiedRevenue, KeywordData } from '../services/revenueCalculations';
@@ -7,7 +6,6 @@ import { RestaurantIntelligence } from '../services/placesAPI';
 import { socialLinkFinder, SocialDetectionResult } from '../services/socialLinkFinder';
 import { fetchInstagramMetrics } from '../services/instagramScraper';
 import { fetchFacebookMetrics } from '../services/facebookScraper';
-import { RestaurantCache } from '../utils/cache';
 import EnhancedFloatingBubbles from './EnhancedFloatingBubbles';
 import RevenueLeverSystem from './RevenueLeverSystem';
 import RevenueAttribution from './RevenueAttribution';
@@ -100,20 +98,7 @@ interface ChannelGap {
   color: string;
 }
 
-interface SalesDemoToolProps {
-  cachedData?: RestaurantIntelligence | null;
-  onAnalysisComplete?: (placeId: string, data: RestaurantIntelligence) => void;
-  onStartNewAnalysis?: () => void;
-  placeId?: string;
-}
-
-const SalesDemoTool: React.FC<SalesDemoToolProps> = ({
-  cachedData = null,
-  onAnalysisComplete,
-  onStartNewAnalysis,
-  placeId
-} = {}) => {
-  const navigate = useNavigate();
+const SalesDemoTool: React.FC = () => {
   const [step, setStep] = useState(1);
   const [isLoadingDetection, setIsLoadingDetection] = useState(false);
 
@@ -235,41 +220,6 @@ const SalesDemoTool: React.FC<SalesDemoToolProps> = ({
   const [profileDetected, setProfileDetected] = useState<Record<string, boolean>>({});
   const [metricsFetched, setMetricsFetched] = useState<Record<string, boolean>>({});
 
-  // Initialize with cached data if available
-  useEffect(() => {
-    if (cachedData && placeId && placeId !== 'new') {
-      console.log('Initializing with cached data for place ID:', placeId);
-      
-      setData(prevData => ({
-        ...prevData,
-        // Google Places data
-        placeId: cachedData.placeDetails.place_id,
-        placeName: cachedData.placeDetails.name,
-        placeAddress: cachedData.placeDetails.formatted_address,
-        placeRating: cachedData.placeDetails.rating,
-        placeReviewCount: cachedData.placeDetails.user_ratings_total,
-        placePhotoUrl: cachedData.placeDetails.photos?.[0]?.photo_reference,
-        website: cachedData.placeDetails.website,
-        isDataAutoDetected: true,
-        
-        // Business metrics
-        monthlyRevenue: cachedData.estimatedMonthlyRevenue,
-        avgTicket: cachedData.estimatedAvgTicket,
-        monthlyTransactions: cachedData.estimatedMonthlyTransactions,
-        
-        // Keywords
-        keywords: cachedData.keywords || [],
-        keywordsAutoDetected: !!(cachedData.keywords && cachedData.keywords.length > 0),
-        keywordsFetchError: cachedData.keywordsFetchError
-      }));
-
-      // If we have cached data, skip to step 4 (results)
-      setStep(4);
-    } else {
-      // Fresh analysis or no place ID
-      setStep(1);
-    }
-  }, [cachedData, placeId]);
 
   // Handle restaurant selection from Places API
   const handleRestaurantSelected = async (intelligence: RestaurantIntelligence) => {
@@ -409,19 +359,6 @@ const SalesDemoTool: React.FC<SalesDemoToolProps> = ({
       // Detection finished
       setIsLoadingDetection(false);
       setStep(2);
-
-      // Cache the restaurant intelligence data
-      if (onAnalysisComplete && placeDetails.place_id) {
-        const intelligenceToCache: RestaurantIntelligence = {
-          placeDetails,
-          estimatedMonthlyRevenue: intelligence.estimatedMonthlyRevenue,
-          estimatedAvgTicket: intelligence.estimatedAvgTicket,
-          estimatedMonthlyTransactions: intelligence.estimatedMonthlyTransactions,
-          keywords: intelligence.keywords || [],
-          keywordsFetchError: intelligence.keywordsFetchError
-        };
-        onAnalysisComplete(placeDetails.place_id, intelligenceToCache);
-      }
     } catch (error) {
       console.error('Restaurant data processing failed:', error);
       setSocialDetectionStatus('failed');
@@ -1981,32 +1918,7 @@ const SalesDemoTool: React.FC<SalesDemoToolProps> = ({
             </button>
 
             <button
-              onClick={() => {
-                // Reset all state and navigate to new analysis
-                if (onStartNewAnalysis) {
-                  onStartNewAnalysis();
-                } else {
-                  // Reset to step 1 for new analysis
-                  setStep(1);
-                  // Reset all data
-                  setData({
-                    placeId: '',
-                    placeName: '',
-                    placeAddress: '',
-                    placeRating: 0,
-                    placeReviewCount: 0,
-                    placePhotoUrl: '',
-                    website: '',
-                    isDataAutoDetected: false,
-                    monthlyRevenue: 50000,
-                    avgTicket: 45,
-                    monthlyTransactions: 1111,
-                    keywords: [],
-                    keywordsAutoDetected: false,
-                    keywordsFetchError: undefined
-                  });
-                }
-              }}
+              onClick={() => setStep(1)}
               style={{
                 background: 'transparent',
                 color: '#8b9cf4',
