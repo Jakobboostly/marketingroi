@@ -597,7 +597,7 @@ const SmoothRevenueLeverSystem: React.FC<SmoothRevenueLeverSystemProps> = ({
         </p>
       </div>
 
-      <style jsx>{`
+      <style>{`
         @keyframes fadeInUp {
           from {
             opacity: 0;

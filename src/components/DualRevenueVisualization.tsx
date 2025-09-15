@@ -69,6 +69,12 @@ const DualRevenueVisualization: React.FC<DualRevenueVisualizationProps> = ({
   const [hoveredData, setHoveredData] = useState<AttributionData | null>(null);
   const [mousePosition, setMousePosition] = useState<{x: number, y: number}>({x: 0, y: 0});
   const [leverStates, setLeverStates] = useState<{[key: string]: boolean}>({});
+  const [month12Data, setMonth12Data] = useState<{
+    baseline: number;
+    optimized: number;
+    difference: number;
+    percentageGrowth: number;
+  } | null>(null);
 
   // Calculate lever data using unified revenue calculations
   const leverCalculations = useMemo(() => {
@@ -453,16 +459,21 @@ const DualRevenueVisualization: React.FC<DualRevenueVisualizationProps> = ({
         return '';
       });
 
-    // Center text
-    const totalRevenue = data.reduce((sum, d) => sum + d.revenue, 0);
-    
+    // Center text - use Month 12 data when available for consistency
+    let displayRevenue;
+    if (month12Data) {
+      displayRevenue = isOptimized ? month12Data.optimized : month12Data.baseline;
+    } else {
+      displayRevenue = data.reduce((sum, d) => sum + d.revenue, 0);
+    }
+
     g.append('text')
       .attr('text-anchor', 'middle')
       .attr('dy', '-0.5em')
       .style('font-size', isOptimized ? '28px' : '24px')
       .style('font-weight', 'bold')
       .style('fill', isOptimized ? '#FFD700' : '#333')
-      .text(`$${Math.round(totalRevenue).toLocaleString()}`);
+      .text(`$${Math.round(displayRevenue).toLocaleString()}`);
 
     g.append('text')
       .attr('text-anchor', 'middle')
@@ -476,23 +487,39 @@ const DualRevenueVisualization: React.FC<DualRevenueVisualizationProps> = ({
   useEffect(() => {
     const currentData = calculateAttribution(false);
     const optimizedData = calculateAttribution(true);
-    
+
     renderChart(currentChartRef, currentData, false);
     renderChart(optimizedChartRef, optimizedData, true);
-  }, [monthlyRevenue, avgTicket, hasLoyaltyProgram, smsListSize, emailListSize, 
-      socialFollowers, thirdPartyPercentage, currentSEORevenue, leverStates, levers]);
+  }, [monthlyRevenue, avgTicket, hasLoyaltyProgram, smsListSize, emailListSize,
+      socialFollowers, thirdPartyPercentage, currentSEORevenue, leverStates, levers, month12Data]);
 
   const currentData = calculateAttribution(false);
   const optimizedData = calculateAttribution(true);
+
+  // Scale data to match Month 12 projections when available
+  const displayCurrentData = month12Data ? currentData.map(item => ({
+    ...item,
+    revenue: (item.revenue / currentData.reduce((sum, d) => sum + d.revenue, 0)) * month12Data.baseline,
+    percentage: item.percentage
+  })) : currentData;
+
+  const displayOptimizedData = month12Data ? optimizedData.map(item => ({
+    ...item,
+    revenue: (item.revenue / optimizedData.reduce((sum, d) => sum + d.revenue, 0)) * month12Data.optimized,
+    percentage: item.percentage
+  })) : optimizedData;
+
   const totalOptimizedRevenue = optimizedData.reduce((sum, d) => sum + d.revenue, 0);
-  
-  // Calculate growth potential using the same method as lever calculations
-  const actualGrowthPotential = levers.reduce((sum, lever) => {
-    if (lever.isActive) {
-      return sum + (lever.potentialRevenue - lever.currentRevenue);
-    }
-    return sum;
-  }, 0);
+
+  // Use Month 12 data for growth potential when available, otherwise calculate from levers
+  const actualGrowthPotential = month12Data
+    ? month12Data.difference
+    : levers.reduce((sum, lever) => {
+        if (lever.isActive) {
+          return sum + (lever.potentialRevenue - lever.currentRevenue);
+        }
+        return sum;
+      }, 0);
   
   const growthPotential = actualGrowthPotential;
   const growthPercentage = (growthPotential / monthlyRevenue) * 100;
@@ -572,7 +599,7 @@ const DualRevenueVisualization: React.FC<DualRevenueVisualizationProps> = ({
           color: '#10b981',
           margin: 0
         }}>
-          Unlock ${Math.round(actualGrowthPotential).toLocaleString()} ({((actualGrowthPotential / monthlyRevenue) * 100).toFixed(1)}% growth)
+          Unlock ${Math.round(actualGrowthPotential).toLocaleString()} ({month12Data ? month12Data.percentageGrowth.toFixed(1) : ((actualGrowthPotential / monthlyRevenue) * 100).toFixed(1)}% growth)
         </p>
       </div>
 
@@ -621,7 +648,7 @@ const DualRevenueVisualization: React.FC<DualRevenueVisualizationProps> = ({
               minWidth: '120px'
             }}>
               <div style={{ fontWeight: 'bold', marginBottom: '8px', fontSize: '12px' }}>Revenue Mix</div>
-              {currentData.map((item, index) => (
+              {displayCurrentData.map((item, index) => (
                 <div key={index} style={{
                   display: 'flex',
                   alignItems: 'center',
@@ -645,6 +672,27 @@ const DualRevenueVisualization: React.FC<DualRevenueVisualizationProps> = ({
               ))}
             </div>
           </div>
+
+          {/* Revenue Summary under Current Chart */}
+          {month12Data && (
+            <div style={{
+              textAlign: 'center',
+              marginTop: '15px',
+              padding: '12px',
+              background: 'rgba(248, 250, 252, 0.8)',
+              borderRadius: '8px',
+              border: '1px solid #e2e8f0'
+            }}>
+              <div style={{
+                fontSize: '16px',
+                fontWeight: '600',
+                color: '#64748b',
+                marginBottom: '2px'
+              }}>
+                Without: ${(month12Data.baseline / 1000).toFixed(1)}k
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Optimized Revenue Chart - Premium Treatment */}
@@ -728,7 +776,7 @@ const DualRevenueVisualization: React.FC<DualRevenueVisualizationProps> = ({
                   minWidth: '120px'
                 }}>
                   <div style={{ fontWeight: 'bold', marginBottom: '8px', fontSize: '12px', color: '#92400e' }}>Optimized Mix</div>
-                  {optimizedData.map((item, index) => (
+                  {displayOptimizedData.map((item, index) => (
                     <div key={index} style={{
                       display: 'flex',
                       alignItems: 'center',
@@ -754,6 +802,34 @@ const DualRevenueVisualization: React.FC<DualRevenueVisualizationProps> = ({
               </div>
             </div>
           </div>
+
+          {/* Revenue Summary under Optimized Chart */}
+          {month12Data && (
+            <div style={{
+              textAlign: 'center',
+              marginTop: '15px',
+              padding: '12px',
+              background: 'rgba(255, 248, 237, 0.8)',
+              borderRadius: '8px',
+              border: '2px solid #fbbf24'
+            }}>
+              <div style={{
+                fontSize: '16px',
+                fontWeight: '600',
+                color: '#92400e',
+                marginBottom: '4px'
+              }}>
+                With Boostly: ${(month12Data.optimized / 1000).toFixed(1)}k
+              </div>
+              <div style={{
+                fontSize: '14px',
+                fontWeight: '700',
+                color: '#f59e0b'
+              }}>
+                +${(month12Data.difference / 1000).toFixed(1)}k (+{month12Data.percentageGrowth.toFixed(1)}%)
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Top Right: Monthly Forecast Chart */}
@@ -761,7 +837,7 @@ const DualRevenueVisualization: React.FC<DualRevenueVisualizationProps> = ({
           gridColumn: '2 / 3',
           gridRow: '1 / 2'
         }}>
-          <MonthlyForecastChart 
+          <MonthlyForecastChart
             currentRevenue={monthlyRevenue}
             leverStates={leverStates}
             monthlyGrowthPotential={growthPotential}
@@ -772,6 +848,7 @@ const DualRevenueVisualization: React.FC<DualRevenueVisualizationProps> = ({
               potentialRevenue: lever.potentialRevenue,
               isActive: lever.isActive
             }))}
+            onMonth12DataChange={setMonth12Data}
           />
         </div>
 
@@ -911,6 +988,7 @@ const DualRevenueVisualization: React.FC<DualRevenueVisualizationProps> = ({
                   color: lever.isActive ? lever.color : '#666',
                   marginBottom: '5px'
                 }}>
+                  {/* Show the individual lever's contribution */}
                   +${Math.round(lever.potentialRevenue - lever.currentRevenue).toLocaleString()}
                 </div>
                 <div style={{
@@ -944,7 +1022,7 @@ const DualRevenueVisualization: React.FC<DualRevenueVisualizationProps> = ({
           }}>
             📊 Current Channel Breakdown
           </h3>
-          {currentData.map((item) => (
+          {displayCurrentData.map((item) => (
             <div 
               key={item.channel}
               style={{ 
@@ -991,7 +1069,7 @@ const DualRevenueVisualization: React.FC<DualRevenueVisualizationProps> = ({
           }}>
             🚀 Optimized Channel Breakdown
           </h3>
-          {optimizedData.map((item) => (
+          {displayOptimizedData.map((item) => (
             <div 
               key={item.channel}
               style={{ 
@@ -1037,312 +1115,25 @@ const DualRevenueVisualization: React.FC<DualRevenueVisualizationProps> = ({
             </h4>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
               <span>Additional Monthly Revenue:</span>
-              <span style={{ fontWeight: '700' }}>+${Math.round(actualGrowthPotential).toLocaleString()}</span>
+              <span style={{ fontWeight: '700' }}>
+                +${month12Data ? Math.round(month12Data.difference).toLocaleString() : Math.round(actualGrowthPotential).toLocaleString()}
+              </span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
               <span>Growth Percentage:</span>
-              <span style={{ fontWeight: '700' }}>{((actualGrowthPotential / monthlyRevenue) * 100).toFixed(1)}%</span>
+              <span style={{ fontWeight: '700' }}>
+                {month12Data ? month12Data.percentageGrowth.toFixed(1) : ((actualGrowthPotential / monthlyRevenue) * 100).toFixed(1)}%
+              </span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
               <span>Annual Revenue Impact:</span>
-              <span style={{ fontWeight: '700' }}>${Math.round(actualGrowthPotential * 12).toLocaleString()}</span>
+              <span style={{ fontWeight: '700' }}>
+                ${month12Data ? Math.round(month12Data.optimized).toLocaleString() : Math.round(monthlyRevenue + actualGrowthPotential).toLocaleString()}
+              </span>
             </div>
           </div>
         </div>
       </div>
-
-      {/* SEO Opportunities Showcase */}
-      {restaurantData && restaurantData.keywords && restaurantData.keywords.length > 0 && (
-        <div style={{
-          marginBottom: '40px',
-          background: 'white',
-          borderRadius: '16px',
-          padding: '30px',
-          boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
-          border: '1px solid #e2e8f0'
-        }}>
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            marginBottom: '20px'
-          }}>
-            <span style={{ fontSize: '24px', marginRight: '12px' }}>🎯</span>
-            <h3 style={{
-              fontSize: '1.8rem',
-              fontWeight: '700',
-              color: '#334155',
-              margin: 0
-            }}>
-              Your Top SEO Opportunities
-            </h3>
-          </div>
-          
-          <p style={{
-            fontSize: '16px',
-            color: '#64748b',
-            marginBottom: '25px'
-          }}>
-            {levers.find(l => l.id === 'seo')?.isActive 
-              ? 'Here\'s how we\'ll optimize your keyword rankings:'
-              : 'Unlock revenue potential with strategic keyword improvements:'
-            }
-          </p>
-
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: '2fr 100px 100px 120px 140px',
-            gap: '15px',
-            alignItems: 'center',
-            marginBottom: '16px',
-            padding: '12px 20px',
-            backgroundColor: '#334155',
-            borderRadius: '8px',
-            fontSize: '12px',
-            fontWeight: '600',
-            color: 'white',
-            textTransform: 'uppercase',
-            letterSpacing: '0.5px'
-          }}>
-            <div>Keyword</div>
-            <div style={{ textAlign: 'center' }}>Current</div>
-            <div style={{ textAlign: 'center' }}>Target</div>
-            <div style={{ textAlign: 'center' }}>Volume</div>
-            <div style={{ textAlign: 'center' }}>Revenue Impact</div>
-          </div>
-
-          {restaurantData.keywords
-            .map(keyword => {
-              if (!keyword || typeof keyword !== 'object') return null;
-              
-              const currentPosition = Number(keyword.currentPosition) || 5;
-              const targetPosition = Math.max(1, currentPosition - 2);
-              const searchVolume = Number(keyword.searchVolume) || 0;
-              const avgTicketCalc = Number(avgTicket) || 45;
-              
-              if (searchVolume <= 0) return null;
-              
-              // Use pure Local Pack CTR rates from restaurant-stats-markdown.md
-              const getCTR = (position: number) => {
-                // Restaurant keywords typically show in Local Pack - use these rates
-                const localPackRates = { 
-                  1: 0.33,   // 33% for position #1
-                  2: 0.22,   // 22% for position #2  
-                  3: 0.13,   // 13% for position #3
-                  4: 0.08,   // Estimated for lower positions
-                  5: 0.05,
-                  6: 0.03,
-                  7: 0.02,
-                  8: 0.015,
-                  9: 0.01,
-                  10: 0.008,
-                  11: 0.006,
-                  12: 0.005,
-                  13: 0.004,
-                  14: 0.0035,
-                  15: 0.003,
-                  16: 0.0025,
-                  17: 0.002,
-                  18: 0.0018,
-                  19: 0.0016,
-                  20: 0.008,
-                  21: 0.007,
-                  22: 0.006,
-                  23: 0.005,
-                  24: 0.004,
-                  25: 0.003,
-                  26: 0.002,
-                  27: 0.0015,
-                  28: 0.001,
-                  29: 0.0008,
-                  30: 0.0005
-                };
-                return localPackRates[position as keyof typeof localPackRates] || 0.0003;
-              };
-              
-              // Use restaurant industry conversion rate from benchmarks
-              const conversionRate = 0.05; // 5% from restaurant-stats-markdown.md
-              
-              // For keywords not in top 3, we can get them to #1 with 33% CTR
-              const currentCTR = getCTR(currentPosition);
-              const targetCTR = currentPosition > 3 ? 0.33 : getCTR(targetPosition); // If not top 3, we can get to #1 (33% CTR)
-              
-              const currentRevenue = Math.floor(searchVolume * currentCTR * conversionRate * avgTicketCalc);
-              const targetRevenue = Math.floor(searchVolume * targetCTR * conversionRate * avgTicketCalc);
-              
-              // For keywords already at #1, there's no improvement possible
-              let improvementRevenue = Math.max(0, targetRevenue - currentRevenue);
-              
-              // Don't show fake improvements for #1 positions
-              if (currentPosition === 1) {
-                improvementRevenue = 0;
-              }
-              
-              return {
-                ...keyword,
-                currentPosition,
-                targetPosition,
-                searchVolume,
-                improvementRevenue
-              };
-            })
-            .filter(Boolean)
-            .sort((a, b) => (b?.improvementRevenue || 0) - (a?.improvementRevenue || 0))
-            .slice(0, 5) // Show top 5 opportunities
-            .map((keyword, index) => {
-              if (!keyword) return null;
-              
-              const seoLever = levers.find(l => l.id === 'seo');
-              const showOptimized = seoLever?.isActive;
-              
-              return (
-                <div key={index} style={{
-                  display: 'grid',
-                  gridTemplateColumns: '2fr 100px 100px 120px 140px',
-                  gap: '15px',
-                  alignItems: 'center',
-                  padding: '18px 20px',
-                  backgroundColor: showOptimized ? '#f0f9ff' : 'white',
-                  borderRadius: '8px',
-                  marginBottom: '8px',
-                  border: showOptimized ? '2px solid #0ea5e9' : '1px solid #e2e8f0',
-                  boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-                  transition: 'all 0.3s ease'
-                }}>
-                  <div style={{
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    color: '#334155',
-                    display: 'flex',
-                    alignItems: 'center'
-                  }}>
-                    {keyword.keyword}
-                    {index < 2 && (
-                      <span style={{
-                        marginLeft: '8px',
-                        padding: '2px 6px',
-                        backgroundColor: index === 0 ? '#dc2626' : '#f59e0b',
-                        color: 'white',
-                        fontSize: '10px',
-                        borderRadius: '4px',
-                        fontWeight: '600'
-                      }}>
-                        {index === 0 ? 'HIGH IMPACT' : 'QUICK WIN'}
-                      </span>
-                    )}
-                  </div>
-                  
-                  <div style={{
-                    textAlign: 'center',
-                    fontSize: '16px',
-                    fontWeight: '700',
-                    color: keyword.currentPosition <= 3 ? '#10b981' : keyword.currentPosition <= 10 ? '#f59e0b' : '#ef4444'
-                  }}>
-                    #{keyword.currentPosition}
-                  </div>
-                  
-                  <div style={{
-                    textAlign: 'center',
-                    fontSize: '16px',
-                    fontWeight: '700',
-                    color: showOptimized ? '#0ea5e9' : '#10b981'
-                  }}>
-                    #{showOptimized ? keyword.targetPosition : keyword.targetPosition}
-                  </div>
-                  
-                  <div style={{
-                    textAlign: 'center',
-                    fontSize: '12px',
-                    color: '#64748b'
-                  }}>
-                    {keyword.searchVolume.toLocaleString()}
-                  </div>
-                  
-                  <div style={{
-                    textAlign: 'center',
-                    fontSize: '14px'
-                  }}>
-                    <div style={{
-                      fontWeight: '700',
-                      color: showOptimized ? '#0ea5e9' : '#10b981',
-                      fontSize: '16px',
-                      marginBottom: '2px'
-                    }}>
-                      +${keyword.improvementRevenue.toLocaleString()}
-                    </div>
-                    <div style={{
-                      fontSize: '10px',
-                      color: '#64748b'
-                    }}>
-                      monthly
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          
-          <div style={{
-            marginTop: '20px',
-            padding: '15px 20px',
-            background: levers.find(l => l.id === 'seo')?.isActive ? 
-              'linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%)' : 
-              'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
-            borderRadius: '8px',
-            border: levers.find(l => l.id === 'seo')?.isActive ? 'none' : '1px solid #e2e8f0',
-            color: levers.find(l => l.id === 'seo')?.isActive ? 'white' : '#334155'
-          }}>
-            <div style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center'
-            }}>
-              <div>
-                <div style={{ fontSize: '14px', fontWeight: '600', marginBottom: '4px' }}>
-                  {levers.find(l => l.id === 'seo')?.isActive ? 
-                    '✓ SEO Optimization Active' : 
-                    'Total SEO Opportunity'
-                  }
-                </div>
-                <div style={{ fontSize: '12px', opacity: 0.8 }}>
-                  {levers.find(l => l.id === 'seo')?.isActive ?
-                    'Rankings improved, revenue flowing' :
-                    'Additional monthly revenue potential'
-                  }
-                </div>
-              </div>
-              <div style={{
-                fontSize: '24px',
-                fontWeight: '700'
-              }}>
-                +${restaurantData.keywords
-                  .slice(0, 5)
-                  .reduce((total, keyword) => {
-                    if (!keyword || typeof keyword !== 'object') return total;
-                    
-                    const currentPosition = Number(keyword.currentPosition) || 5;
-                    const targetPosition = Math.max(1, currentPosition - 2);
-                    const searchVolume = Number(keyword.searchVolume) || 0;
-                    const avgTicketCalc = Number(avgTicket) || 45;
-                    
-                    if (searchVolume <= 0) return total;
-                    
-                    const getCTR = (position: number) => {
-                      const ctrRates = { 1: 0.25, 2: 0.18, 3: 0.12, 4: 0.08, 5: 0.05, 6: 0.03, 7: 0.02, 8: 0.01, 9: 0.01, 10: 0.01 };
-                      return ctrRates[position as keyof typeof ctrRates] || 0.005;
-                    };
-                    
-                    const conversionRate = 0.25;
-                    const currentRevenue = Math.floor(searchVolume * getCTR(currentPosition) * conversionRate * avgTicketCalc) || 0;
-                    const targetRevenue = Math.floor(searchVolume * getCTR(targetPosition) * conversionRate * avgTicketCalc) || 0;
-                    const improvement = Math.max(0, targetRevenue - currentRevenue) || 0;
-                    
-                    return total + improvement;
-                  }, 0).toLocaleString()}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* CSS Animation for pulse effect */}
       <style>{`
         @keyframes pulse {

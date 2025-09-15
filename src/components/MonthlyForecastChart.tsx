@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useMemo } from 'react';
 import * as d3 from 'd3';
 import { calculateUnifiedRevenue, RevenueCalculationInputs } from '../services/revenueCalculations';
 
@@ -13,6 +13,12 @@ interface MonthlyForecastChartProps {
     potentialRevenue: number;
     isActive: boolean;
   }>;
+  onMonth12DataChange?: (data: {
+    baseline: number;
+    optimized: number;
+    difference: number;
+    percentageGrowth: number;
+  }) => void;
 }
 
 const MonthlyForecastChart: React.FC<MonthlyForecastChartProps> = ({
@@ -20,9 +26,56 @@ const MonthlyForecastChart: React.FC<MonthlyForecastChartProps> = ({
   leverStates,
   monthlyGrowthPotential = 0,
   restaurantData,
-  leverData
+  leverData,
+  onMonth12DataChange
 }) => {
   const svgRef = useRef<SVGSVGElement>(null);
+
+  // Define months array outside to be accessible everywhere
+  const months = ['Month 1', 'Month 2', 'Month 3', 'Month 4', 'Month 5', 'Month 6', 'Month 7', 'Month 8', 'Month 9', 'Month 10', 'Month 11', 'Month 12'];
+
+  // Generate monthly data using useMemo to make it accessible to calculateMetrics
+  const { baselineData, optimizedData } = useMemo(() => {
+    
+    const baselineData = months.map((month, i) => ({
+      month,
+      monthIndex: i,
+      revenue: currentRevenue * (1 + (0.005 * i)) // 0.5% monthly growth (realistic without marketing investment)
+    }));
+
+    // Use actual lever calculations for optimized data
+    const optimizedData = months.map((month, i) => {
+      // Base revenue with natural growth
+      const baseWithGrowth = currentRevenue * (1 + (0.005 * i)); // 0.5% monthly growth
+      
+      // If no levers active, same as baseline
+      if (!leverData || leverData.length === 0 || !leverData.some(l => l.isActive)) {
+        return {
+          month,
+          monthIndex: i,
+          revenue: baseWithGrowth
+        };
+      }
+      
+      // Calculate additional revenue from active levers
+      const additionalRevenue = leverData.reduce((sum, lever) => {
+        if (lever.isActive) {
+          // Gradual ramp up to full potential by month 6, then steady
+          const rampUpFactor = i <= 6 ? (i / 6) : 1;
+          return sum + ((lever.potentialRevenue - lever.currentRevenue) * rampUpFactor);
+        }
+        return sum;
+      }, 0);
+      
+      return {
+        month,
+        monthIndex: i,
+        revenue: baseWithGrowth + additionalRevenue
+      };
+    });
+
+    return { baselineData, optimizedData };
+  }, [currentRevenue, leverData]);
 
   useEffect(() => {
     if (!svgRef.current) return;
@@ -61,47 +114,6 @@ const MonthlyForecastChart: React.FC<MonthlyForecastChartProps> = ({
       .attr('stop-color', '#10b981')
       .attr('stop-opacity', 0.05);
 
-    // Generate monthly data
-    const months = ['Month 1', 'Month 2', 'Month 3', 'Month 4', 'Month 5', 'Month 6', 'Month 7', 'Month 8', 'Month 9', 'Month 10', 'Month 11', 'Month 12'];
-    
-    // No longer using complex growth multipliers - using actual lever calculations instead
-
-    const baselineData = months.map((month, i) => ({
-      month,
-      monthIndex: i,
-      revenue: currentRevenue * (1 + (0.005 * i)) // 0.5% monthly growth (realistic without marketing investment)
-    }));
-
-    // Use actual lever calculations for optimized data
-    const optimizedData = months.map((month, i) => {
-      // Base revenue with natural growth
-      const baseWithGrowth = currentRevenue * (1 + (0.005 * i)); // 0.5% monthly growth
-      
-      // If no levers active, same as baseline
-      if (!leverData || leverData.length === 0 || !leverData.some(l => l.isActive)) {
-        return {
-          month,
-          monthIndex: i,
-          revenue: baseWithGrowth
-        };
-      }
-      
-      // Calculate additional revenue from active levers
-      const additionalRevenue = leverData.reduce((sum, lever) => {
-        if (lever.isActive) {
-          // Gradual ramp up to full potential by month 6, then steady
-          const rampUpFactor = i <= 6 ? (i / 6) : 1;
-          return sum + ((lever.potentialRevenue - lever.currentRevenue) * rampUpFactor);
-        }
-        return sum;
-      }, 0);
-      
-      return {
-        month,
-        monthIndex: i,
-        revenue: baseWithGrowth + additionalRevenue
-      };
-    });
 
     // Calculate cumulative additional revenue
     const additionalRevenue = optimizedData.reduce((sum, d, i) => 
@@ -359,6 +371,23 @@ const MonthlyForecastChart: React.FC<MonthlyForecastChartProps> = ({
   };
 
   const { totalAdditional, breakEvenMonth, yearEndGrowth } = calculateMetrics();
+
+  // Notify parent component of Month 12 data changes
+  useEffect(() => {
+    if (onMonth12DataChange && baselineData.length > 0 && optimizedData.length > 0) {
+      const month12Baseline = baselineData[11].revenue;
+      const month12Optimized = optimizedData[11].revenue;
+      const difference = month12Optimized - month12Baseline;
+      const percentageGrowth = (difference / month12Baseline) * 100;
+
+      onMonth12DataChange({
+        baseline: month12Baseline,
+        optimized: month12Optimized,
+        difference: difference,
+        percentageGrowth: percentageGrowth
+      });
+    }
+  }, [baselineData, optimizedData, onMonth12DataChange]);
 
   return (
     <div style={{

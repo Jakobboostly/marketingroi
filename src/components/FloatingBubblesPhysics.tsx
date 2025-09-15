@@ -144,7 +144,7 @@ const FloatingBubblesPhysics: React.FC<FloatingBubblesPhysicsProps> = ({
           }}
         >
           <strong>{selectedFact.title}:</strong> {selectedFact.details.substring(0, 150)}...
-          <style jsx>{`
+          <style>{`
             @keyframes slideUp {
               from {
                 opacity: 0;

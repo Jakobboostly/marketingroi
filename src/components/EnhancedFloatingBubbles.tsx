@@ -324,7 +324,7 @@ const EnhancedFloatingBubbles: React.FC<EnhancedFloatingBubblesProps> = ({
         </div>
       )}
 
-      <style jsx>{`
+      <style>{`
         @keyframes slideUp {
           from {
             opacity: 0;
